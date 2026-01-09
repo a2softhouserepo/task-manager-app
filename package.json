@@ -1,0 +1,63 @@
+{
+  "name": "task-manager-app",
+  "version": "1.0.0",
+  "description": "Sistema de gerenciamento de tarefas e serviços para clientes",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "setup": "node scripts/setup-root.js",
+    "users:seed": "node scripts/seed-users.js",
+    "users:clear": "node scripts/clear-users.js",
+    "tasks:seed": "node scripts/seed-tasks.js",
+    "tasks:clear": "node scripts/clear-tasks.js",
+    "categories:seed": "node scripts/seed-categories.js",
+    "categories:clear": "node scripts/clear-categories.js",
+    "clients:seed": "node scripts/seed-clients.js",
+    "clients:clear": "node scripts/clear-clients.js",
+    "audit:seed": "node scripts/seed-audit-logs.js",
+    "audit:clear": "node scripts/clear-audit-logs.js",
+    "seed:all": "npm run users:seed && npm run clients:seed && npm run categories:seed && npm run tasks:seed",
+    "clear:all": "npm run tasks:clear && npm run categories:clear && npm run clients:clear && npm run audit:clear",
+    "test:db": "node test-connection.js"
+  },
+  "keywords": [
+    "task-manager",
+    "services",
+    "clients",
+    "invoicing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "chart.js": "^4.5.1",
+    "dotenv": "^17.2.3",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
+    "mongoose": "^8.19.3",
+    "next": "^16.0.1",
+    "next-auth": "^4.24.13",
+    "next-themes": "^0.4.6",
+    "nodemailer": "^7.0.7",
+    "react": "^19.2.0",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^24.10.1",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.2.4",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.22",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.0.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  }
+}

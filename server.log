@@ -1,0 +1,15 @@
+
+> task-manager-app@1.0.0 dev
+> next dev
+
+⚠ Port 3000 is in use by process 45626, using available port 3001 instead.
+▲ Next.js 16.1.1 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.0.12:3001
+- Environments: .env.local
+
+✓ Starting...
+⨯ Unable to acquire lock at /Users/a2horizons/Development/A2/erp/task-manager-app/.ne[?25h
+lock, is another instance of next dev running?
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h

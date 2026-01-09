@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #213547;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --muted: #6b7280;
+  --muted-foreground: #9ca3af;
+  --accent: #3b82f6;
+  --secondary-bg: #f9fafb;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #e5e5e5;
+  --card-bg: #141414;
+  --card-border: #262626;
+  --input-bg: #1a1a1a;
+  --input-border: #262626;
+  --muted: #737373;
+  --muted-foreground: #a3a3a3;
+  --accent: #3b82f6;
+  --secondary-bg: #141414;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Override Tailwind defaults for dark mode if needed */
+.dark body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Custom component classes */
+.input-soft {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--foreground);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.input-soft:focus {
+  border-color: var(--accent);
+  ring: 2px;
+  ring-color: rgba(59, 130, 246, 0.5);
+}
+
+.input-soft::placeholder {
+  color: var(--muted);
+}
+
+.dark .input-soft {
+  border-color: var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--foreground);
+}
+
+.dark .input-soft::placeholder {
+  color: var(--muted);
+}
+
+.dark .input-soft:focus {
+  border-color: #3b82f6;
+  ring: 2px;
+  ring-color: rgba(59, 130, 246, 0.5);
+}
+
+.btn-primary {
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: #3b82f6;
+  outline: none;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #2563eb;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: var(--foreground);
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--card-border);
+  outline: none;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  opacity: 0.8;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .btn-secondary {
+  color: var(--foreground);
+  background-color: var(--secondary-bg);
+  border-color: var(--card-border);
+}
+
+.btn-danger {
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: #ef4444;
+  outline: none;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  border: none;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #dc2626;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-success {
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: #22c55e;
+  outline: none;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  border: none;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #16a34a;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.card-soft {
+  background-color: var(--card-bg);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--card-border);
+  transition: all 0.2s;
+}
+
+.dark .card-soft {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: var(--card-bg);
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--card-border);
+  max-width: 32rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.dark .modal-content {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+}
