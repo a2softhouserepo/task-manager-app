@@ -39,6 +39,7 @@ export default function AuditLogsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [filterAction, setFilterAction] = useState('');
   const [filterResource, setFilterResource] = useState('');
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const userRole = (session?.user as any)?.role || 'user';
   const canViewLogs = userRole === 'rootAdmin' || userRole === 'admin';
@@ -80,6 +81,20 @@ export default function AuditLogsPage() {
   const getActionColor = (action: string) => {
     return ACTION_COLORS[action] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
   };
+
+  const toggleRow = (logId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(logId)) {
+        newSet.delete(logId);
+      } else {
+        newSet.add(logId);
+      }
+      return newSet;
+    });
+  };
+
+  const isRowExpanded = (logId: string) => expandedRows.has(logId);
 
   if (status === 'loading' || (loading && logs.length === 0)) {
     return (
@@ -145,42 +160,62 @@ export default function AuditLogsPage() {
                   <th className={`text-left text-xs font-medium text-muted-foreground uppercase tracking-wider ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Recurso</th>
                   <th className={`text-left text-xs font-medium text-muted-foreground uppercase tracking-wider ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Detalhes</th>
                   <th className={`text-left text-xs font-medium text-muted-foreground uppercase tracking-wider ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>IP</th>
+                  <th className={`text-left text-xs font-medium text-muted-foreground uppercase tracking-wider ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {logs.map((log) => (
-                  <tr key={log._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                    <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-foreground whitespace-nowrap`}>
-                      {log.createdAt ? formatDateTime(log.createdAt) : 'Data desconhecida'}
-                    </td>
-                    <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-muted-foreground`}>
-                      {typeof log.userName === 'string' ? log.userName : 'Usuário desconhecido'}
-                    </td>
-                    <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getActionColor(log.action)}`}>
-                        {typeof log.action === 'string' ? log.action : 'UNKNOWN'}
-                      </span>
-                    </td>
-                    <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-muted-foreground`}>
-                      {typeof log.resource === 'string' ? log.resource : 'UNKNOWN'}
-                      {log.resourceId && typeof log.resourceId === 'string' && (
-                        <span className="text-muted-foreground ml-1">
-                          ({log.resourceId.substring(0, 8)}...)
+                {logs.map((log) => {
+                  const expanded = isRowExpanded(log._id);
+                  const detailsText = typeof log.details === 'string' ? log.details : 
+                                     log.details ? JSON.stringify(log.details, null, 2) : '-';
+                  const shouldTruncate = detailsText.length > 50;
+                  
+                  return (
+                    <tr key={log._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                      <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-foreground whitespace-nowrap`}>
+                        {log.createdAt ? formatDateTime(log.createdAt) : 'Data desconhecida'}
+                      </td>
+                      <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-muted-foreground`}>
+                        {typeof log.userName === 'string' ? log.userName : 'Usuário desconhecido'}
+                      </td>
+                      <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getActionColor(log.action)}`}>
+                          {typeof log.action === 'string' ? log.action : 'UNKNOWN'}
                         </span>
-                      )}
-                    </td>
-                    <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-muted-foreground max-w-xs truncate`}>
-                      {typeof log.details === 'string' ? log.details : 
-                       log.details ? JSON.stringify(log.details) : '-'}
-                    </td>
-                    <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-muted-foreground`}>
-                      {typeof log.ipAddress === 'string' ? log.ipAddress : '-'}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-muted-foreground`}>
+                        {typeof log.resource === 'string' ? log.resource : 'UNKNOWN'}
+                        {log.resourceId && typeof log.resourceId === 'string' && (
+                          <span className="text-muted-foreground ml-1">
+                            ({log.resourceId.substring(0, 8)}...)
+                          </span>
+                        )}
+                      </td>
+                      <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-muted-foreground ${expanded ? '' : 'max-w-xs'}`}>
+                        <div className={expanded ? 'whitespace-pre-wrap break-words' : 'truncate'}>
+                          {detailsText}
+                        </div>
+                      </td>
+                      <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm text-muted-foreground`}>
+                        {typeof log.ipAddress === 'string' ? log.ipAddress : '-'}
+                      </td>
+                      <td className={`${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'} text-sm`}>
+                        {shouldTruncate && (
+                          <button
+                            onClick={() => toggleRow(log._id)}
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                            title={expanded ? 'Recolher' : 'Expandir'}
+                          >
+                            {expanded ? '▲' : '▼'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={6} className={`${isCompact ? 'px-3 py-8' : 'px-4 py-12'} text-center text-muted-foreground`}>
+                    <td colSpan={7} className={`${isCompact ? 'px-3 py-8' : 'px-4 py-12'} text-center text-muted-foreground`}>
                       Nenhum log encontrado
                     </td>
                   </tr>
