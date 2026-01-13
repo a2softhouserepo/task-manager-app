@@ -573,7 +573,7 @@ export default function DashboardPage() {
                     padding: 12,
                     displayColors: false,
                     callbacks: {
-                      label: (context) => formatCurrency(context.parsed.y),
+                      label: (context) => formatCurrency(context.parsed.y ?? 0),
                     },
                   },
                 },

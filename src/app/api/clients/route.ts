@@ -11,7 +11,7 @@ import { decryptString, isEncrypted } from '@/lib/crypto';
 function decryptClientFields(clientObj: any) {
   const fields = ['name', 'phone', 'email', 'address', 'notes'];
   for (const field of fields) {
-    if (clientObj[field] && isEncrypted(clientObj[field])) {
+    if (clientObj[field] && isEncrypted(clientObj[field] as string)) {
       try {
         clientObj[field] = decryptString(clientObj[field]);
       } catch (error) {
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       if (process.env.NODE_ENV === 'development') {
         const fieldsToCheck = ['name', 'phone', 'email', 'address', 'notes'];
         for (const field of fieldsToCheck) {
-          if (obj[field] && isEncrypted(obj[field])) {
+          if ((obj as any)[field] && isEncrypted((obj as any)[field] as string)) {
             console.warn(`[API] Field "${field}" is still encrypted for client ${obj._id}`);
           }
         }

@@ -11,7 +11,7 @@ import { decryptString, isEncrypted } from '@/lib/crypto';
 function decryptClientFields(clientObj: any) {
   const fields = ['name', 'phone', 'email', 'address', 'notes'];
   for (const field of fields) {
-    if (clientObj[field] && isEncrypted(clientObj[field])) {
+    if (clientObj[field] && isEncrypted(clientObj[field] as string)) {
       try {
         clientObj[field] = decryptString(clientObj[field]);
       } catch (error) {
@@ -107,7 +107,7 @@ export async function PUT(
     
     const validationResult = updateClientSchema.safeParse(body);
     if (!validationResult.success) {
-      const errors = validationResult.error.errors || [];
+      const errors = validationResult.error.issues || [];
       const errorMessages = errors.length > 0
         ? errors.map((err) => `${err.path.join('.')}: ${err.message}`).join('; ')
         : 'Dados inválidos';

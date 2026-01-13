@@ -73,8 +73,8 @@ export function createAuditSnapshot(obj: any): any {
   const snapshot = JSON.parse(JSON.stringify(obj));
   
   // Remove sensitive fields
-  if (snapshot.password) delete snapshot.password;
-  if (snapshot.passwordHash) delete snapshot.passwordHash;
+  if (snapshot.password) delete (snapshot as any).password;
+  if (snapshot.passwordHash) delete (snapshot as any).passwordHash;
   
   return snapshot;
 }

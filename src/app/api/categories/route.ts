@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     
     const validationResult = createCategorySchema.safeParse(body);
     if (!validationResult.success) {
-      const errors = validationResult.error.errors || [];
+      const errors = validationResult.error.issues || [];
       const errorMessages = errors.length > 0
         ? errors.map((err) => `${err.path.join('.')}: ${err.message}`).join('; ')
         : 'Dados inválidos';
