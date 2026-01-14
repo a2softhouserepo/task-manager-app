@@ -814,7 +814,6 @@ export default function DashboardPage() {
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Categoria</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Cliente</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Título</th>
-                <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Descrição</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
                   <button
                     onClick={() => handleSort('deliveryDate')}
@@ -866,11 +865,6 @@ export default function DashboardPage() {
                     </div>
                   </td>
                   <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <div className="max-w-xs truncate" title={task.description}>
-                      {task.description}
-                    </div>
-                  </td>
-                  <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     {task.deliveryDate ? formatDate(task.deliveryDate) : '-'}
                   </td>
                   <td className={`px-4 text-sm font-semibold text-foreground text-right whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
@@ -914,7 +908,7 @@ export default function DashboardPage() {
               ))}
               {tasks.length === 0 && (
                 <tr>
-                  <td colSpan={9} className={`px-4 text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
+                  <td colSpan={8} className={`px-4 text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
                     Nenhuma tarefa encontrada no período selecionado
                   </td>
                 </tr>

@@ -55,6 +55,8 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   
   // Ordenação
   const [sortColumn, setSortColumn] = useState<'requestDate' | 'clientName' | 'title' | 'cost'>('requestDate');
@@ -258,6 +260,11 @@ export default function TasksPage() {
     setShowModal(true);
   };
 
+  const openViewModal = (task: Task) => {
+    setViewingTask(task);
+    setShowViewModal(true);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -410,7 +417,7 @@ export default function TasksPage() {
       
       autoTable(doc, {
         startY: filterText ? 48 : 42,
-        head: [['Data Sol.', 'Categoria', 'Cliente', 'Título', 'Descrição', 'Entrega', 'Custo', 'Status', 'Observações']],
+        head: [['Data Sol.', 'Categoria', 'Cliente', 'Título', 'Entrega', 'Custo', 'Status', 'Observações']],
         body: tableData,
         styles: { fontSize: 7 },
         headStyles: { fillColor: [59, 130, 246] },
@@ -604,7 +611,6 @@ export default function TasksPage() {
                       {renderSortIcon('title')}
                     </button>
                   </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Descrição</th>
                   <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Entrega</th>
                   <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                     <button
@@ -621,7 +627,7 @@ export default function TasksPage() {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {getSortedTasks().map((task) => (
-                  <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                  <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer" onClick={() => openViewModal(task)}>
                     <td className={`text-sm whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <span className="font-medium text-foreground">
                         {formatDate(task.requestDate)}
@@ -640,11 +646,6 @@ export default function TasksPage() {
                           📧
                         </span>
                       )}
-                    </td>
-                    <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <div className="max-w-xs truncate" title={task.description}>
-                        {task.description}
-                      </div>
                     </td>
                     <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.deliveryDate ? formatDate(task.deliveryDate) : '-'}
@@ -690,7 +691,7 @@ export default function TasksPage() {
                 ))}
                 {tasks.length === 0 && (
                   <tr>
-                    <td colSpan={9} className={`text-center text-muted-foreground ${isCompact ? 'px-3 py-8' : 'px-4 py-12'}`}>
+                    <td colSpan={8} className={`text-center text-muted-foreground ${isCompact ? 'px-3 py-8' : 'px-4 py-12'}`}>
                       Nenhuma tarefa encontrada no período selecionado
                     </td>
                   </tr>
@@ -700,7 +701,119 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {/* Modal */}
+        {/* Modal de Visualização */}
+        <Modal
+          isOpen={showViewModal}
+          onClose={() => setShowViewModal(false)}
+          title="Detalhes da Tarefa"
+          size="lg"
+        >
+          {viewingTask && (
+            <div className="space-y-6">
+              {/* Informações Principais */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Informações Gerais</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground">Título</label>
+                      <p className="text-sm text-foreground font-medium">{viewingTask.title}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground">Cliente</label>
+                      <p className="text-sm text-foreground">{viewingTask.clientName}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground">Categoria</label>
+                      <p className="text-sm text-foreground">{viewingTask.categoryName}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground">Status</label>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(viewingTask.status).color}`}>
+                        {getStatusBadge(viewingTask.status).label}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Datas e Valores</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground">Data de Solicitação</label>
+                      <p className="text-sm text-foreground">{formatDate(viewingTask.requestDate)}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground">Data de Entrega</label>
+                      <p className="text-sm text-foreground">{viewingTask.deliveryDate ? formatDate(viewingTask.deliveryDate) : 'Não definida'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground">Custo</label>
+                      <p className="text-sm text-foreground font-semibold">{formatCurrency(viewingTask.cost)}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground">Criado em</label>
+                      <p className="text-sm text-foreground">{formatDate(viewingTask.createdAt)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Descrição */}
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Descrição</h3>
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{viewingTask.description}</p>
+                </div>
+              </div>
+              
+              {/* Observações */}
+              {viewingTask.observations && (
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Observações</h3>
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{viewingTask.observations}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Status do Asana */}
+              <div className="flex items-center gap-2">
+                <label className="block text-sm font-medium text-muted-foreground">Status do Asana:</label>
+                {viewingTask.asanaEmailSent ? (
+                  <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Enviado
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Não enviado
+                  </span>
+                )}
+              </div>
+              
+              {/* Botões de Ação */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => {
+                    setShowViewModal(false);
+                    openEditModal(viewingTask);
+                  }}
+                  className="btn-primary"
+                >
+                  Editar Tarefa
+                </button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Modal de Edição */}
         <Modal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
