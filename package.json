@@ -9,6 +9,7 @@
     "lint": "next lint",
     "setup": "node scripts/setup-root.js",
     "users:seed": "node scripts/seed-users.js",
+    "users:seed:prod": "node scripts/seed-users.js -- --prod",
     "users:clear": "node scripts/clear-users.js",
     "tasks:seed": "node scripts/seed-tasks.js",
     "tasks:clear": "node scripts/clear-tasks.js",
