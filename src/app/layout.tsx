@@ -21,11 +21,9 @@ export default function RootLayout({
               (function() {
                 try {
                   const theme = localStorage.getItem('theme') || 'system';
-                  const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-                  if (theme === 'dark' || (theme === 'system' && darkQuery.matches)) {
+                  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  if (theme === 'dark' || (theme === 'system' && prefersDark)) {
                     document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
                   }
                 } catch (e) {}
               })();

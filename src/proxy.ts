@@ -82,6 +82,31 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // Check POST operations for tasks - validate file uploads
+  if (pathname.match(/^\/api\/tasks$/) && request.method === 'POST') {
+    const { files } = await request.json();
+    const maxFiles = 5;
+    const maxSize = 2 * 1024 * 1024; // 2MB
+
+    // Validate number of files
+    if (files.length > maxFiles) {
+      return NextResponse.json(
+        { error: `Upload up to ${maxFiles} files only` },
+        { status: 400 }
+      );
+    }
+
+    // Validate size of each file
+    for (const file of files) {
+      if (file.size > maxSize) {
+        return NextResponse.json(
+          { error: 'File size exceeds 2MB limit' },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   return NextResponse.next();
 }
 

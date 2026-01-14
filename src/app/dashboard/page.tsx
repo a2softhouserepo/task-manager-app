@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, FormEvent } from 'react';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { getChartColors } from '@/lib/chartColors';
 import Modal from '@/components/Modal';
 import { Bar, Doughnut } from 'react-chartjs-2';
@@ -77,8 +76,7 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { isCompact } = useUI();
-  const { resolvedTheme } = useTheme();
+  const { isCompact, resolvedTheme } = useUI();
   const chartColors = getChartColors(resolvedTheme || 'light');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -297,6 +295,7 @@ export default function DashboardPage() {
     
     try {
       const url = editingTask ? `/api/tasks/${editingTask._id}` : '/api/tasks';
+      let res: Response;
       
       // Se não está editando e tem anexos, usa FormData
       if (!editingTask && taskAttachments.length > 0 && taskForm.sendToAsana) {
@@ -313,21 +312,12 @@ export default function DashboardPage() {
           formData.append('attachments', file);
         });
         
-        const res = await fetch(url, {
+        res = await fetch(url, {
           method: 'POST',
           body: formData,
         });
-        
-        if (res.ok) {
-          setShowTaskModal(false);
-          setTaskAttachments([]);
-          loadData();
-        } else {
-          const data = await res.json();
-          alert(data.error || 'Erro ao salvar tarefa');
-        }
       } else {
-        const res = await fetch(url, {
+        res = await fetch(url, {
           method: editingTask ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -335,20 +325,12 @@ export default function DashboardPage() {
             cost: Number(taskForm.cost),
           }),
         });
-        
-        if (res.ok) {
-          setShowTaskModal(false);
-          setTaskAttachments([]);
-          loadData();
-        } else {
-          const data = await res.json();
-          alert(data.error || 'Erro ao salvar tarefa');
-        }
       }
       
       if (res.ok) {
         setShowTaskModal(false);
         setEditingTask(null);
+        setTaskAttachments([]);
         setTaskForm({
           requestDate: new Date().toISOString().split('T')[0],
           clientId: '',
@@ -361,14 +343,10 @@ export default function DashboardPage() {
           status: 'pending',
           sendToAsana: true,
         });
-        loadTasks();
-        // Recarregar stats
-        const statsRes = await fetch('/api/tasks/stats');
-        const statsData = await statsRes.json();
-        setStats(statsData);
+        loadData();
       } else {
         const data = await res.json();
-        alert(data.error || 'Erro ao criar tarefa');
+        alert(data.error || 'Erro ao salvar tarefa');
       }
     } catch (error) {
       console.error('Error creating task:', error);

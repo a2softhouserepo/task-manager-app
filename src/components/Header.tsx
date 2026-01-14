@@ -3,15 +3,13 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUI } from '@/contexts/UIContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 
 export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const { isCompact, toggleDensity } = useUI();
-  const { theme, setTheme } = useTheme();
+  const { isCompact, toggleDensity, theme, setTheme } = useUI();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   

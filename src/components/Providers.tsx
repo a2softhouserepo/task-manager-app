@@ -2,7 +2,6 @@
 
 import { SessionProvider, useSession } from 'next-auth/react';
 import { UIProvider } from '@/contexts/UIContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
 import { usePathname } from 'next/navigation';
 import Header from './Header';
 
@@ -18,7 +17,7 @@ function AppWrapper({ children }: { children: React.ReactNode }) {
   const showHeader = status === 'authenticated' && !isPublicPage;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
+    <div className="min-h-screen transition-colors duration-300">
       {showHeader && <Header />}
       <main>
         {children}
@@ -30,11 +29,9 @@ function AppWrapper({ children }: { children: React.ReactNode }) {
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ThemeProvider>
-        <UIProvider>
-          <AppWrapper>{children}</AppWrapper>
-        </UIProvider>
-      </ThemeProvider>
+      <UIProvider>
+        <AppWrapper>{children}</AppWrapper>
+      </UIProvider>
     </SessionProvider>
   );
 }
