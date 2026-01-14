@@ -221,15 +221,15 @@ export default function UsersPage() {
         <div className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800/50">
+              <thead className="">
                 <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Usuário</th>
-                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Nome</th>
-                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>E-mail</th>
-                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Papel</th>
-                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Status</th>
-                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Último Login</th>
-                  <th className={`text-right ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Ações</th>
+                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>USUÁRIO</th>
+                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>NOME</th>
+                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>E-MAIL</th>
+                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>PAPEL</th>
+                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>STATUS</th>
+                  <th className={`${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>ÚLTIMO LOGIN</th>
+                  <th className={`text-right ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>AÇÕES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

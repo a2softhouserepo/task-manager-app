@@ -320,30 +320,30 @@ export default function ClientsPage() {
         <div className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-200">
-              <thead className="bg-gray-50 dark:bg-gray-800/50">
+              <thead className="">
                 <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                     <button
                       onClick={() => handleSort('name')}
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      Nome
+                      NOME
                       {renderSortIcon('name')}
                     </button>
                   </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Telefone</th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>TELEFONE</th>
                   <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                     <button
                       onClick={() => handleSort('email')}
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      E-mail
+                      E-MAIL
                       {renderSortIcon('email')}
                     </button>
                   </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Endereço</th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Status</th>
-                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Ações</th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>ENDEREÇO</th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>STATUS</th>
+                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>AÇÕES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

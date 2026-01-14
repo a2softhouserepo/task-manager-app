@@ -581,14 +581,14 @@ export default function TasksPage() {
         <div className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-200">
-              <thead className="bg-gray-50 dark:bg-gray-800/50">
+              <thead className="">
                 <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                     <button
                       onClick={() => handleSort('requestDate')}
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      Data Sol.
+                      DATA SOL.
                       {renderSortIcon('requestDate')}
                     </button>
                   </th>
@@ -598,7 +598,7 @@ export default function TasksPage() {
                       onClick={() => handleSort('clientName')}
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      Cliente
+                      CLIENTE
                       {renderSortIcon('clientName')}
                     </button>
                   </th>
@@ -607,22 +607,22 @@ export default function TasksPage() {
                       onClick={() => handleSort('title')}
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      Título
+                      TÍTULO
                       {renderSortIcon('title')}
                     </button>
                   </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Entrega</th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>ENTREGA</th>
                   <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                     <button
                       onClick={() => handleSort('cost')}
                       className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
                     >
-                      Custo
+                      CUSTO
                       {renderSortIcon('cost')}
                     </button>
                   </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Status</th>
-                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Ações</th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>STATUS</th>
+                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>AÇÕES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -766,7 +766,7 @@ export default function TasksPage() {
               {/* Descrição */}
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-4">Descrição</h3>
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <div className=" rounded-lg p-4">
                   <p className="text-sm text-foreground whitespace-pre-wrap">{viewingTask.description}</p>
                 </div>
               </div>
@@ -775,7 +775,7 @@ export default function TasksPage() {
               {viewingTask.observations && (
                 <div>
                   <h3 className="text-lg font-semibold text-foreground mb-4">Observações</h3>
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                  <div className=" rounded-lg p-4">
                     <p className="text-sm text-foreground whitespace-pre-wrap">{viewingTask.observations}</p>
                   </div>
                 </div>
