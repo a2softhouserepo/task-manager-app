@@ -488,12 +488,12 @@ export default function TasksPage() {
 
         {/* Filtros */}
         <div className={`card-soft ${isCompact ? 'p-3 mb-3' : 'p-6 mb-6'}`}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4 sm:mb-0">
+          <div className="flex items-center justify-between gap-4">
+            <h3 className="text-lg font-semibold text-foreground whitespace-nowrap">
               Tarefas do Período
             </h3>
-            <div className="flex flex-wrap gap-3">
-              <label className="flex items-center gap-2">
+            <div className="flex items-center gap-3 flex-1 justify-end overflow-x-auto">
+              <label className="flex items-center gap-2 whitespace-nowrap">
                 <input
                   type="checkbox"
                   checked={useCustomPeriod}
@@ -503,64 +503,64 @@ export default function TasksPage() {
                 <span className="text-sm text-gray-600 dark:text-gray-400">Período customizado</span>
               </label>
             
-            {useCustomPeriod ? (
-              <>
+              {useCustomPeriod ? (
+                <>
+                  <input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="input-soft w-auto"
+                    placeholder="Data início"
+                  />
+                  <input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="input-soft w-auto"
+                    placeholder="Data fim"
+                  />
+                </>
+              ) : (
                 <input
-                  type="date"
-                  value={filterStartDate}
-                  onChange={(e) => setFilterStartDate(e.target.value)}
-                  className="input-soft !w-auto"
-                  placeholder="Data início"
+                  type="month"
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  className="input-soft w-auto"
                 />
-                <input
-                  type="date"
-                  value={filterEndDate}
-                  onChange={(e) => setFilterEndDate(e.target.value)}
-                  className="input-soft !w-auto"
-                  placeholder="Data fim"
-                />
-              </>
-            ) : (
-              <input
-                type="month"
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
-                className="input-soft !w-auto"
-              />
-            )}
-            
-            <select
-              value={filterClientId}
-              onChange={(e) => setFilterClientId(e.target.value)}
-              className="input-soft !w-auto"
-            >
-              <option value="">Todos os clientes</option>
-              {clients.map((c) => (
-                <option key={c._id} value={c._id}>{c.name}</option>
-              ))}
-            </select>
-            
-            <select
-              value={filterCategoryId}
-              onChange={(e) => setFilterCategoryId(e.target.value)}
-              className="input-soft !w-auto"
-            >
-              <option value="">Todas as categorias</option>
-              {categories.map((c) => (
-                <option key={c._id} value={c._id}>{c.icon} {c.name}</option>
-              ))}
-            </select>
-            
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="input-soft !w-auto"
-            >
-              <option value="">Todos os status</option>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+              )}
+              
+              <select
+                value={filterClientId}
+                onChange={(e) => setFilterClientId(e.target.value)}
+                className="input-soft w-auto min-w-[150px]"
+              >
+                <option value="">Todos os clientes</option>
+                {clients.map((c) => (
+                  <option key={c._id} value={c._id}>{c.name}</option>
+                ))}
+              </select>
+              
+              <select
+                value={filterCategoryId}
+                onChange={(e) => setFilterCategoryId(e.target.value)}
+                className="input-soft w-auto min-w-[180px]"
+              >
+                <option value="">Todas as categorias</option>
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>{c.icon} {c.name}</option>
+                ))}
+              </select>
+              
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="input-soft w-auto min-w-[140px]"
+              >
+                <option value="">Todos os status</option>
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -665,7 +665,7 @@ export default function TasksPage() {
                     <td className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => openEditModal(task)}
+                          onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
                           className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-muted-foreground dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
                           title="Editar"
                         >
@@ -675,7 +675,7 @@ export default function TasksPage() {
                         </button>
                         {canDelete && (
                           <button
-                            onClick={() => handleDelete(task._id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(task._id); }}
                             disabled={deleting === task._id}
                             className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-muted-foreground dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
                             title="Excluir"
