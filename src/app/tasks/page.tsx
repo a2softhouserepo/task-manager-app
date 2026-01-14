@@ -56,6 +56,10 @@ export default function TasksPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   
+  // Ordenação
+  const [sortColumn, setSortColumn] = useState<'requestDate' | 'clientName' | 'title' | 'cost'>('requestDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
   // Filtros
   const [filterMonth, setFilterMonth] = useState(() => {
     const now = new Date();
@@ -145,6 +149,77 @@ export default function TasksPage() {
     } catch (error) {
       console.error('Error loading tasks:', error);
     }
+  };
+
+  // Função para ordenar tarefas
+  const getSortedTasks = () => {
+    return [...tasks].sort((a, b) => {
+      let aValue: string | number, bValue: string | number;
+
+      switch (sortColumn) {
+        case 'requestDate':
+          aValue = new Date(a.requestDate).getTime();
+          bValue = new Date(b.requestDate).getTime();
+          break;
+        case 'clientName':
+          aValue = a.clientName.toLowerCase();
+          bValue = b.clientName.toLowerCase();
+          break;
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'cost':
+          aValue = a.cost;
+          bValue = b.cost;
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  };
+
+  // Função para lidar com clique nos cabeçalhos
+  const handleSort = (column: 'requestDate' | 'clientName' | 'title' | 'cost') => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Função para renderizar ícone de ordenação
+  const renderSortIcon = (column: 'requestDate' | 'clientName' | 'title' | 'cost') => {
+    const isActive = sortColumn === column;
+    const isAsc = sortDirection === 'asc';
+    
+    return (
+      <div className="flex flex-col">
+        <svg 
+          className={`w-3 h-3 ${isActive && isAsc ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} transition-colors`} 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+        </svg>
+        <svg 
+          className={`w-3 h-3 -mt-1 ${isActive && !isAsc ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} transition-colors`} 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    );
   };
 
   const openNewModal = () => {
@@ -405,7 +480,7 @@ export default function TasksPage() {
         </div>
 
         {/* Filtros */}
-        <div className="card-soft p-6 mb-6">
+        <div className={`card-soft ${isCompact ? 'p-3 mb-3' : 'p-6 mb-6'}`}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
             <h3 className="text-lg font-semibold text-foreground mb-4 sm:mb-0">
               Tarefas do Período
@@ -484,7 +559,7 @@ export default function TasksPage() {
         </div>
 
         {/* Totalizador */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4 mb-4">
+        <div className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg ${isCompact ? 'p-3 mb-3' : 'p-4 mb-4'}`}>
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">
               {tasks.length} tarefa(s) encontrada(s)
@@ -496,35 +571,69 @@ export default function TasksPage() {
         </div>
 
         {/* Lista */}
-        <div className="card-soft overflow-hidden">
+        <div className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-200">
               <thead className="bg-gray-50 dark:bg-gray-800/50">
-                <tr className="text-left text-sm text-muted-foreground">
-                  <th className={`px-4 font-medium ${isCompact ? 'py-2' : 'py-3'}`}>Data Sol.</th>
-                  <th className={`px-4 font-medium ${isCompact ? 'py-2' : 'py-3'}`}>Categoria</th>
-                  <th className={`px-4 font-medium ${isCompact ? 'py-2' : 'py-3'}`}>Cliente</th>
-                  <th className={`px-4 font-medium ${isCompact ? 'py-2' : 'py-3'}`}>Título</th>
-                  <th className={`px-4 font-medium ${isCompact ? 'py-2' : 'py-3'}`}>Descrição</th>
-                  <th className={`px-4 font-medium ${isCompact ? 'py-2' : 'py-3'}`}>Entrega</th>
-                  <th className={`px-4 font-medium text-right ${isCompact ? 'py-2' : 'py-3'}`}>Custo</th>
-                  <th className={`px-4 font-medium ${isCompact ? 'py-2' : 'py-3'}`}>Status</th>
-                  <th className={`px-4 font-medium text-right ${isCompact ? 'py-2' : 'py-3'}`}>Ações</th>
+                <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
+                    <button
+                      onClick={() => handleSort('requestDate')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      Data Sol.
+                      {renderSortIcon('requestDate')}
+                    </button>
+                  </th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Categoria</th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
+                    <button
+                      onClick={() => handleSort('clientName')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      Cliente
+                      {renderSortIcon('clientName')}
+                    </button>
+                  </th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
+                    <button
+                      onClick={() => handleSort('title')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      Título
+                      {renderSortIcon('title')}
+                    </button>
+                  </th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Descrição</th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Entrega</th>
+                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
+                    <button
+                      onClick={() => handleSort('cost')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
+                    >
+                      Custo
+                      {renderSortIcon('cost')}
+                    </button>
+                  </th>
+                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Status</th>
+                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {tasks.map((task) => (
-                  <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                    <td className={`px-4 text-sm text-foreground whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
-                      {formatDate(task.requestDate)}
+                {getSortedTasks().map((task) => (
+                  <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                    <td className={`text-sm whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                      <span className="font-medium text-foreground">
+                        {formatDate(task.requestDate)}
+                      </span>
                     </td>
-                    <td className={`px-4 text-sm text-muted-foreground ${isCompact ? 'py-2' : 'py-3'}`}>
+                    <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.categoryName}
                     </td>
-                    <td className={`px-4 text-sm text-muted-foreground ${isCompact ? 'py-2' : 'py-3'}`}>
+                    <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.clientName}
                     </td>
-                    <td className={`px-4 text-sm font-medium text-foreground ${isCompact ? 'py-2' : 'py-3'}`}>
+                    <td className={`text-sm whitespace-nowrap font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.title}
                       {task.asanaEmailSent && (
                         <span className="ml-2 text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
@@ -532,28 +641,30 @@ export default function TasksPage() {
                         </span>
                       )}
                     </td>
-                    <td className={`px-4 text-sm text-muted-foreground max-w-xs truncate ${isCompact ? 'py-2' : 'py-3'}`}>
-                      {task.description}
+                    <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                      <div className="max-w-xs truncate" title={task.description}>
+                        {task.description}
+                      </div>
                     </td>
-                    <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
+                    <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.deliveryDate ? formatDate(task.deliveryDate) : '-'}
                     </td>
-                    <td className={`px-4 text-sm font-medium text-foreground text-right whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
+                    <td className={`text-sm font-medium text-foreground text-right whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {formatCurrency(task.cost)}
                     </td>
-                    <td className={`px-4 ${isCompact ? 'py-2' : 'py-3'}`}>
+                    <td className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(task.status).color}`}>
                         {getStatusBadge(task.status).label}
                       </span>
                     </td>
-                    <td className={`px-4 ${isCompact ? 'py-2' : 'py-3'}`}>
-                      <div className="flex items-center justify-end gap-1">
+                    <td className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEditModal(task)}
-                          className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
+                          className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-muted-foreground dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
                           title="Editar"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
@@ -561,13 +672,13 @@ export default function TasksPage() {
                           <button
                             onClick={() => handleDelete(task._id)}
                             disabled={deleting === task._id}
-                            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
+                            className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-muted-foreground dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
                             title="Excluir"
                           >
                             {deleting === task._id ? (
-                              <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                              <div className="w-5 h-5 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
                             ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             )}
@@ -579,7 +690,7 @@ export default function TasksPage() {
                 ))}
                 {tasks.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan={9} className={`text-center text-muted-foreground ${isCompact ? 'px-3 py-8' : 'px-4 py-12'}`}>
                       Nenhuma tarefa encontrada no período selecionado
                     </td>
                   </tr>
