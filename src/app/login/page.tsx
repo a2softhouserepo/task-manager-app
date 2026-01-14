@@ -120,11 +120,6 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
-        
-        <div className="mt-6 text-center text-sm text-muted-foreground rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-          <p className="mb-1">Credenciais padrão:</p>
-          <p className="font-mono text-foreground font-medium">root / root123</p>
-        </div>
       </div>
     </div>
   );
