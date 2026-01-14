@@ -122,16 +122,33 @@ export async function POST(request: NextRequest) {
         title: formData.get('title'),
         description: formData.get('description'),
         deliveryDate: formData.get('deliveryDate'),
-        cost: formData.get('cost'),
+        cost: parseFloat(formData.get('cost') as string) || 0,
         observations: formData.get('observations'),
         status: formData.get('status'),
         sendToAsana: formData.get('sendToAsana') === 'true',
       };
 
-      // Extrai os arquivos
+      // Extrai e valida os arquivos
       const files = formData.getAll('attachments');
+      const maxFiles = 5;
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      
+      if (files.length > maxFiles) {
+        return NextResponse.json(
+          { error: `Máximo de ${maxFiles} arquivos permitidos` },
+          { status: 400 }
+        );
+      }
+      
       for (const file of files) {
         if (file instanceof File) {
+          if (file.size > maxSize) {
+            return NextResponse.json(
+              { error: `Arquivo ${file.name} excede o limite de 10MB` },
+              { status: 400 }
+            );
+          }
+          
           const bytes = await file.arrayBuffer();
           const buffer = Buffer.from(bytes);
           attachments.push({
