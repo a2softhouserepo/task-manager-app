@@ -4,6 +4,6 @@ export default function ClientsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main>{children}</main>
+    <>{children}</>
   );
 }

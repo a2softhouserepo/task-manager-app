@@ -12,7 +12,7 @@ const adminRoutes = ['/users', '/api/users'];
 // Routes that require rootAdmin role only
 const rootAdminRoutes = ['/audit-logs', '/api/audit-logs'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes

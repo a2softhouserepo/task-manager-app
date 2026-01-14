@@ -4,6 +4,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main>{children}</main>
+    <>{children}</>
   );
 }

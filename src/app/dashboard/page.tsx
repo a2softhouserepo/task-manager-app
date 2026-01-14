@@ -116,6 +116,7 @@ export default function DashboardPage() {
     status: 'pending',
     sendToAsana: true,
   });
+  const [taskAttachments, setTaskAttachments] = useState<File[]>([]);
   const [savingTask, setSavingTask] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -268,6 +269,7 @@ export default function DashboardPage() {
       status: task.status,
       sendToAsana: false,
     });
+    setTaskAttachments([]);
     setShowTaskModal(true);
   };
 
@@ -285,6 +287,7 @@ export default function DashboardPage() {
       status: 'pending',
       sendToAsana: true,
     });
+    setTaskAttachments([]);
     setShowTaskModal(true);
   };
 
@@ -294,14 +297,54 @@ export default function DashboardPage() {
     
     try {
       const url = editingTask ? `/api/tasks/${editingTask._id}` : '/api/tasks';
-      const res = await fetch(url, {
-        method: editingTask ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...taskForm,
-          cost: Number(taskForm.cost),
-        }),
-      });
+      
+      // Se não está editando e tem anexos, usa FormData
+      if (!editingTask && taskAttachments.length > 0 && taskForm.sendToAsana) {
+        const formData = new FormData();
+        
+        // Adiciona todos os campos do formulário
+        Object.entries(taskForm).forEach(([key, value]) => {
+          formData.append(key, value.toString());
+        });
+        formData.append('cost', Number(taskForm.cost).toString());
+        
+        // Adiciona os arquivos
+        taskAttachments.forEach((file) => {
+          formData.append('attachments', file);
+        });
+        
+        const res = await fetch(url, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (res.ok) {
+          setShowTaskModal(false);
+          setTaskAttachments([]);
+          loadData();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Erro ao salvar tarefa');
+        }
+      } else {
+        const res = await fetch(url, {
+          method: editingTask ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...taskForm,
+            cost: Number(taskForm.cost),
+          }),
+        });
+        
+        if (res.ok) {
+          setShowTaskModal(false);
+          setTaskAttachments([]);
+          loadData();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Erro ao salvar tarefa');
+        }
+      }
       
       if (res.ok) {
         setShowTaskModal(false);
@@ -1048,6 +1091,54 @@ export default function DashboardPage() {
                 />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Enviar para Asana</span>
               </label>
+            </div>
+          )}
+
+          {!editingTask && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Anexos para Asana (máx. 5 arquivos, 10MB cada)
+              </label>
+              <input
+                type="file"
+                multiple
+                disabled={!taskForm.sendToAsana}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length > 5) {
+                    alert('Máximo de 5 arquivos permitidos');
+                    return;
+                  }
+                  const oversized = files.find(f => f.size > 10 * 1024 * 1024);
+                  if (oversized) {
+                    alert(`Arquivo ${oversized.name} excede 10MB`);
+                    return;
+                  }
+                  setTaskAttachments(files);
+                }}
+                className="input-soft file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              {!taskForm.sendToAsana && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Marque "Enviar para Asana" para habilitar anexos
+                </p>
+              )}
+              {taskAttachments.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {taskAttachments.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                      <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                      <button
+                        type="button"
+                        onClick={() => setTaskAttachments(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           

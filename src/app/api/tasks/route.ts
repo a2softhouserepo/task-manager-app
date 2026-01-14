@@ -106,7 +106,45 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const body = await request.json();
+    const contentType = request.headers.get('content-type') || '';
+    let body: any;
+    let attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+
+    // Verifica se é multipart/form-data (com arquivos)
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      
+      // Extrai os campos do formulário
+      body = {
+        requestDate: formData.get('requestDate'),
+        clientId: formData.get('clientId'),
+        categoryId: formData.get('categoryId'),
+        title: formData.get('title'),
+        description: formData.get('description'),
+        deliveryDate: formData.get('deliveryDate'),
+        cost: formData.get('cost'),
+        observations: formData.get('observations'),
+        status: formData.get('status'),
+        sendToAsana: formData.get('sendToAsana') === 'true',
+      };
+
+      // Extrai os arquivos
+      const files = formData.getAll('attachments');
+      for (const file of files) {
+        if (file instanceof File) {
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          attachments.push({
+            filename: file.name,
+            content: buffer,
+            contentType: file.type,
+          });
+        }
+      }
+    } else {
+      // JSON normal
+      body = await request.json();
+    }
     
     const validationResult = createTaskSchema.safeParse(body);
     if (!validationResult.success) {
@@ -175,6 +213,7 @@ export async function POST(request: NextRequest) {
         category: category.name,
         dueDate: deliveryDate ? new Date(deliveryDate) : undefined,
         cost,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
 
       if (asanaResult.success) {

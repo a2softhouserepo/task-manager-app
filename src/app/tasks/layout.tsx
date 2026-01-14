@@ -4,6 +4,6 @@ export default function TasksLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main>{children}</main>
+    <>{children}</>
   );
 }

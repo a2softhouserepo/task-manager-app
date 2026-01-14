@@ -37,7 +37,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8 p-8 card-soft">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
@@ -121,7 +121,7 @@ export default function LoginPage() {
           </div>
         </form>
         
-        <div className="mt-6 text-center text-sm text-muted-foreground bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+        <div className="mt-6 text-center text-sm text-muted-foreground rounded-lg p-3 border border-gray-200 dark:border-gray-700">
           <p className="mb-1">Credenciais padrão:</p>
           <p className="font-mono text-foreground font-medium">root / root123</p>
         </div>

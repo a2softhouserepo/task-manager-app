@@ -17,6 +17,11 @@ interface TaskEmailData {
   category: string;
   dueDate?: Date;
   cost: number;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  }>;
 }
 
 /**
@@ -71,6 +76,7 @@ Tarefa criada automaticamente pelo Task Manager
       to: asanaEmail,
       subject: task.title,
       text: emailBody,
+      attachments: task.attachments || [],
     };
 
     await transporter.sendMail(mailOptions);

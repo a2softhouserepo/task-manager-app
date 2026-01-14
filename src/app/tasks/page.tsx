@@ -81,6 +81,7 @@ export default function TasksPage() {
     status: 'pending',
     sendToAsana: true,
   });
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   const userRole = (session?.user as any)?.role || 'user';
   const userId = (session?.user as any)?.id;
@@ -160,6 +161,7 @@ export default function TasksPage() {
       status: 'pending',
       sendToAsana: true,
     });
+    setAttachments([]);
     setShowModal(true);
   };
 
@@ -177,6 +179,7 @@ export default function TasksPage() {
       status: task.status,
       sendToAsana: false,
     });
+    setAttachments([]);
     setShowModal(true);
   };
 
@@ -189,21 +192,53 @@ export default function TasksPage() {
         ? `/api/tasks/${editingTask._id}` 
         : '/api/tasks';
       
-      const res = await fetch(url, {
-        method: editingTask ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          cost: Number(form.cost),
-        }),
-      });
-      
-      if (res.ok) {
-        setShowModal(false);
-        loadTasks();
+      // Se não está editando e tem anexos, usa FormData
+      if (!editingTask && attachments.length > 0 && form.sendToAsana) {
+        const formData = new FormData();
+        
+        // Adiciona todos os campos do formulário
+        Object.entries(form).forEach(([key, value]) => {
+          formData.append(key, value.toString());
+        });
+        formData.append('cost', Number(form.cost).toString());
+        
+        // Adiciona os arquivos
+        attachments.forEach((file) => {
+          formData.append('attachments', file);
+        });
+        
+        const res = await fetch(url, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (res.ok) {
+          setShowModal(false);
+          setAttachments([]);
+          loadTasks();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Erro ao salvar tarefa');
+        }
       } else {
-        const data = await res.json();
-        alert(data.error || 'Erro ao salvar tarefa');
+        // Usa JSON normal para edição ou quando não há anexos
+        const res = await fetch(url, {
+          method: editingTask ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...form,
+            cost: Number(form.cost),
+          }),
+        });
+        
+        if (res.ok) {
+          setShowModal(false);
+          setAttachments([]);
+          loadTasks();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Erro ao salvar tarefa');
+        }
       }
     } catch (error) {
       console.error('Error saving task:', error);
@@ -335,7 +370,7 @@ export default function TasksPage() {
   const totalFiltered = tasks.reduce((sum, t) => sum + t.cost, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen">
       <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${isCompact ? 'py-4' : 'py-8'}`}>
         {/* Header */}
         <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between ${isCompact ? 'mb-3' : 'mb-6'}`}>
@@ -370,17 +405,21 @@ export default function TasksPage() {
         </div>
 
         {/* Filtros */}
-        <div className="card-soft p-4 mb-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={useCustomPeriod}
-                onChange={(e) => setUseCustomPeriod(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              <span className="text-sm text-muted-foreground">Período customizado</span>
-            </label>
+        <div className="card-soft p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4 sm:mb-0">
+              Tarefas do Período
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={useCustomPeriod}
+                  onChange={(e) => setUseCustomPeriod(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Período customizado</span>
+              </label>
             
             {useCustomPeriod ? (
               <>
@@ -440,13 +479,14 @@ export default function TasksPage() {
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
+            </div>
           </div>
         </div>
 
         {/* Totalizador */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center">
-            <span className="text-foreground">
+            <span className="text-gray-700 dark:text-gray-300">
               {tasks.length} tarefa(s) encontrada(s)
             </span>
             <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
@@ -487,7 +527,7 @@ export default function TasksPage() {
                     <td className={`px-4 text-sm font-medium text-foreground ${isCompact ? 'py-2' : 'py-3'}`}>
                       {task.title}
                       {task.asanaEmailSent && (
-                        <span className="ml-2 text-xs text-purple-600 dark:text-purple-400" title="Enviado para Asana">
+                        <span className="ml-2 text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
                           📧
                         </span>
                       )}
@@ -686,6 +726,52 @@ export default function TasksPage() {
                   <span className="text-sm text-muted-foreground">Enviar Asana</span>
                 </label>
               </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Anexos para Asana (máx. 5 arquivos, 10MB cada)
+              </label>
+              <input
+                type="file"
+                multiple
+                disabled={!form.sendToAsana}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length > 5) {
+                    alert('Máximo de 5 arquivos permitidos');
+                    return;
+                  }
+                  const oversized = files.find(f => f.size > 10 * 1024 * 1024);
+                  if (oversized) {
+                    alert(`Arquivo ${oversized.name} excede 10MB`);
+                    return;
+                  }
+                  setAttachments(files);
+                }}
+                className="input-soft file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              {!form.sendToAsana && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Marque "Enviar Asana" para habilitar anexos
+                </p>
+              )}
+              {attachments.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {attachments.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             
             <div>
