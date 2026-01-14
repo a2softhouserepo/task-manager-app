@@ -85,10 +85,14 @@ export default function Header() {
 
           {/* Ações e Perfil */}
           <div className="flex items-center gap-3 sm:gap-4">
+
             {/* Botão Clientes - Disponível para todos */}
             <button
               onClick={() => router.push('/clients')}
-              className="p-2 rounded-lg text-gray-600 hover:text-green-600 hover:bg-green-50 dark:text-gray-400 dark:hover:text-green-400 dark:hover:bg-green-950/30 transition-all"
+              className={`p-2 rounded-lg transition-all
+                ${pathname === '/clients'
+                  ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950/30 font-bold shadow'
+                  : 'text-gray-600 hover:text-green-600 hover:bg-green-50 dark:text-gray-400 dark:hover:text-green-400 dark:hover:bg-green-950/30'}`}
               title="Gerenciar Clientes"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,7 +103,10 @@ export default function Header() {
             {/* Botão Tarefas - Disponível para todos */}
             <button
               onClick={() => router.push('/tasks')}
-              className="p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/30 transition-all"
+              className={`p-2 rounded-lg transition-all
+                ${pathname === '/tasks'
+                  ? 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950/30 font-bold shadow'
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/30'}`}
               title="Gerenciar Tarefas"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +117,10 @@ export default function Header() {
             {/* Botão Categorias - Disponível para todos */}
             <button
               onClick={() => router.push('/categories')}
-              className="p-2 rounded-lg text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-400 dark:hover:text-orange-400 dark:hover:bg-orange-950/30 transition-all"
+              className={`p-2 rounded-lg transition-all
+                ${pathname === '/categories'
+                  ? 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-950/30 font-bold shadow'
+                  : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-400 dark:hover:text-orange-400 dark:hover:bg-orange-950/30'}`}
               title="Gerenciar Categorias"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,10 +129,14 @@ export default function Header() {
             </button>
 
             {/* Botões para admin e rootAdmin */}
+
             {(userRole === 'admin' || userRole === 'rootAdmin') && (
               <button
                 onClick={() => router.push('/users')}
-                className="p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/30 transition-all"
+                className={`p-2 rounded-lg transition-all
+                  ${pathname === '/users'
+                    ? 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950/30 font-bold shadow'
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/30'}`}
                 title="Gerenciar Usuários"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +149,10 @@ export default function Header() {
             {userRole === 'rootAdmin' && (
               <button
                 onClick={() => router.push('/audit-logs')}
-                className="p-2 rounded-lg text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 dark:text-gray-400 dark:hover:text-yellow-400 dark:hover:bg-yellow-950/30 transition-all"
+                className={`p-2 rounded-lg transition-all
+                  ${pathname === '/audit-logs'
+                    ? 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/30 font-bold shadow'
+                    : 'text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 dark:text-gray-400 dark:hover:text-yellow-400 dark:hover:bg-yellow-950/30'}`}
                 title="Logs de Auditoria"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
