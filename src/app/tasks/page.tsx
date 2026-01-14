@@ -637,15 +637,19 @@ export default function TasksPage() {
                       {task.categoryName}
                     </td>
                     <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      {task.clientName}
+                      <div className="max-w-xs truncate" title={task.clientName}>
+                        {task.clientName.length > 15 ? `${task.clientName.substring(0, 15)}...` : task.clientName}
+                      </div>
                     </td>
                     <td className={`text-sm whitespace-nowrap font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      {task.title}
-                      {task.asanaEmailSent && (
-                        <span className="ml-2 text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
-                          📧
-                        </span>
-                      )}
+                      <div className="max-w-xs truncate" title={task.title}>
+                        {task.title.length > 35 ? `${task.title.substring(0, 35)}...` : task.title}
+                        {task.asanaEmailSent && (
+                          <span className="ml-2 text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
+                            📧
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.deliveryDate ? formatDate(task.deliveryDate) : '-'}

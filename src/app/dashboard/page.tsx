@@ -814,24 +814,6 @@ export default function DashboardPage() {
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Categoria</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Cliente</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Título</th>
-                <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
-                  <button
-                    onClick={() => handleSort('deliveryDate')}
-                    className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                  >
-                    Entrega
-                    {renderSortIcon('deliveryDate')}
-                  </button>
-                </th>
-                <th className={`px-4 text-right whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
-                  <button
-                    onClick={() => handleSort('cost')}
-                    className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                  >
-                    Custo
-                    {renderSortIcon('cost')}
-                  </button>
-                </th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Obs.</th>
                 <th className={`px-4 text-right whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>Ações</th>
               </tr>
@@ -863,12 +845,6 @@ export default function DashboardPage() {
                     <div className="max-w-xs truncate" title={task.title}>
                       {task.title}
                     </div>
-                  </td>
-                  <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    {task.deliveryDate ? formatDate(task.deliveryDate) : '-'}
-                  </td>
-                  <td className={`px-4 text-sm font-semibold text-foreground text-right whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    {formatCurrency(task.cost)}
                   </td>
                   <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     <div className="max-w-xs truncate" title={task.observations || ''}>
