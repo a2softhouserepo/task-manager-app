@@ -74,6 +74,29 @@ export default function TasksPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [useCustomPeriod, setUseCustomPeriod] = useState(false);
   
+  // PDF Export Modal
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfColumns, setPdfColumns] = useState({
+    requestDate: true,
+    categoryName: true,
+    clientName: true,
+    title: true,
+    description: true,
+    deliveryDate: true,
+    cost: true,
+    status: true,
+    observations: true,
+  });
+  const [pdfHeaderText, setPdfHeaderText] = useState('');
+  const [pdfFooterText, setPdfFooterText] = useState('');
+  const [pdfStartDate, setPdfStartDate] = useState('');
+  const [pdfEndDate, setPdfEndDate] = useState('');
+  const [pdfMonth, setPdfMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [pdfUseCustomPeriod, setPdfUseCustomPeriod] = useState(false);
+  
   // Form
   const [form, setForm] = useState({
     requestDate: new Date().toISOString().split('T')[0],
@@ -358,27 +381,78 @@ export default function TasksPage() {
     return option || STATUS_OPTIONS[0];
   };
 
+  const openPdfModal = () => {
+    setPdfColumns({
+      requestDate: true,
+      categoryName: true,
+      clientName: true,
+      title: true,
+      description: true,
+      deliveryDate: true,
+      cost: true,
+      status: true,
+      observations: true,
+    });
+    setPdfHeaderText('');
+    setPdfFooterText('');
+    setPdfStartDate(filterStartDate);
+    setPdfEndDate(filterEndDate);
+    setPdfMonth(filterMonth);
+    setPdfUseCustomPeriod(useCustomPeriod);
+    setShowPdfModal(true);
+  };
+
   const exportPDF = async () => {
     try {
+      setShowPdfModal(false);
+      
+      // Filtrar tarefas por período do PDF
+      const params = new URLSearchParams();
+      if (pdfUseCustomPeriod) {
+        if (pdfStartDate) params.set('startDate', pdfStartDate);
+        if (pdfEndDate) params.set('endDate', pdfEndDate);
+      } else {
+        params.set('month', pdfMonth);
+      }
+      if (filterClientId) params.set('clientId', filterClientId);
+      if (filterCategoryId) params.set('categoryId', filterCategoryId);
+      if (filterStatus) params.set('status', filterStatus);
+      
+      const res = await fetch(`/api/tasks?${params.toString()}`);
+      const data = await res.json();
+      const pdfTasks = data.tasks || [];
+      
       const { jsPDF } = await import('jspdf');
       const autoTable = (await import('jspdf-autotable')).default;
       
       const doc = new jsPDF('landscape');
+      let currentY = 14;
+      
+      // Cabeçalho personalizado
+      if (pdfHeaderText) {
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(pdfHeaderText, 14, currentY);
+        currentY += 8;
+      }
       
       // Título
       doc.setFontSize(18);
-      doc.text('Relatório de Serviços', 14, 22);
+      doc.setTextColor(0);
+      doc.text('Relatório de Serviços', 14, currentY);
+      currentY += 8;
       
       // Período
       doc.setFontSize(10);
       let periodText = '';
-      if (useCustomPeriod && filterStartDate && filterEndDate) {
-        periodText = `Período: ${formatDate(filterStartDate)} a ${formatDate(filterEndDate)}`;
+      if (pdfUseCustomPeriod && pdfStartDate && pdfEndDate) {
+        periodText = `Período: ${formatDate(pdfStartDate)} a ${formatDate(pdfEndDate)}`;
       } else {
-        const [year, month] = filterMonth.split('-');
+        const [year, month] = pdfMonth.split('-');
         periodText = `Período: ${getMonthName(parseInt(month) - 1)}/${year}`;
       }
-      doc.text(periodText, 14, 30);
+      doc.text(periodText, 14, currentY);
+      currentY += 6;
       
       // Filtros aplicados
       let filterText = '';
@@ -395,46 +469,97 @@ export default function TasksPage() {
         filterText += `Status: ${statusLabel}`;
       }
       if (filterText) {
-        doc.text(filterText.replace(/\| $/, ''), 14, 36);
+        doc.text(filterText.replace(/\| $/, ''), 14, currentY);
+        currentY += 6;
       }
       
       // Total
-      const total = tasks.reduce((sum, t) => sum + t.cost, 0);
-      doc.text(`Total: ${formatCurrency(total)} (${tasks.length} tarefas)`, 14, filterText ? 42 : 36);
+      const total = pdfTasks.reduce((sum: number, t: Task) => sum + t.cost, 0);
+      doc.text(`Total: ${formatCurrency(total)} (${pdfTasks.length} tarefas)`, 14, currentY);
+      currentY += 6;
       
-      // Tabela
-      const tableData = tasks.map(task => [
-        formatDate(task.requestDate),
-        task.categoryName,
-        task.clientName,
-        task.title,
-        task.description.substring(0, 60) + (task.description.length > 60 ? '...' : ''),
-        task.deliveryDate ? formatDate(task.deliveryDate) : '-',
-        formatCurrency(task.cost),
-        getStatusBadge(task.status).label,
-        task.observations?.substring(0, 40) || '-',
-      ]);
+      // Montar colunas selecionadas
+      const columnMapping: { [key: string]: { label: string; width: number } } = {
+        requestDate: { label: 'Data Sol.', width: 22 },
+        categoryName: { label: 'Categoria', width: 25 },
+        clientName: { label: 'Cliente', width: 30 },
+        title: { label: 'Título', width: 35 },
+        description: { label: 'Descrição', width: 50 },
+        deliveryDate: { label: 'Entrega', width: 22 },
+        cost: { label: 'Custo', width: 22 },
+        status: { label: 'Status', width: 22 },
+        observations: { label: 'Observações', width: 40 },
+      };
+      
+      const selectedColumns = Object.entries(pdfColumns)
+        .filter(([_, selected]) => selected)
+        .map(([key]) => key);
+      
+      const headers = selectedColumns.map(col => columnMapping[col].label);
+      
+      const tableData = pdfTasks.map((task: Task) => {
+        const row: string[] = [];
+        selectedColumns.forEach(col => {
+          switch(col) {
+            case 'requestDate':
+              row.push(formatDate(task.requestDate));
+              break;
+            case 'categoryName':
+              row.push(task.categoryName);
+              break;
+            case 'clientName':
+              row.push(task.clientName);
+              break;
+            case 'title':
+              row.push(task.title);
+              break;
+            case 'description':
+              row.push(task.description.substring(0, 60) + (task.description.length > 60 ? '...' : ''));
+              break;
+            case 'deliveryDate':
+              row.push(task.deliveryDate ? formatDate(task.deliveryDate) : '-');
+              break;
+            case 'cost':
+              row.push(formatCurrency(task.cost));
+              break;
+            case 'status':
+              row.push(getStatusBadge(task.status).label);
+              break;
+            case 'observations':
+              row.push(task.observations?.substring(0, 40) || '-');
+              break;
+          }
+        });
+        return row;
+      });
+      
+      const columnStyles: any = {};
+      selectedColumns.forEach((col, idx) => {
+        columnStyles[idx] = { cellWidth: columnMapping[col].width };
+      });
       
       autoTable(doc, {
-        startY: filterText ? 48 : 42,
-        head: [['Data Sol.', 'Categoria', 'Cliente', 'Título', 'Entrega', 'Custo', 'Status', 'Observações']],
+        startY: currentY,
+        head: [headers],
         body: tableData,
         styles: { fontSize: 7 },
         headStyles: { fillColor: [59, 130, 246] },
-        columnStyles: {
-          0: { cellWidth: 22 },
-          1: { cellWidth: 25 },
-          2: { cellWidth: 30 },
-          3: { cellWidth: 30 },
-          4: { cellWidth: 50 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 22 },
-          7: { cellWidth: 22 },
-          8: { cellWidth: 40 },
-        },
+        columnStyles,
       });
       
-      doc.save(`relatorio-tarefas-${filterMonth || 'custom'}.pdf`);
+      // Rodapé personalizado
+      if (pdfFooterText) {
+        const finalY = (doc as any).lastAutoTable.finalY || currentY + 20;
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text(pdfFooterText, 14, finalY + 10);
+      }
+      
+      const fileName = pdfUseCustomPeriod && pdfStartDate && pdfEndDate 
+        ? `relatorio-tarefas-${pdfStartDate}-${pdfEndDate}.pdf`
+        : `relatorio-tarefas-${pdfMonth}.pdf`;
+      
+      doc.save(fileName);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Erro ao exportar PDF');
@@ -466,7 +591,7 @@ export default function TasksPage() {
           </div>
           <div className="mt-4 sm:mt-0 flex gap-2">
             <button
-              onClick={exportPDF}
+              onClick={openPdfModal}
               className="btn-secondary flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1032,6 +1157,220 @@ export default function TasksPage() {
               </button>
             </div>
           </form>
+        </Modal>
+
+        {/* Modal de Exportação PDF */}
+        <Modal
+          isOpen={showPdfModal}
+          onClose={() => setShowPdfModal(false)}
+          title="Configurar Exportação PDF"
+          size="lg"
+        >
+          <div className="space-y-6">
+            {/* Período */}
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Período da Exportação</h3>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfUseCustomPeriod}
+                    onChange={(e) => setPdfUseCustomPeriod(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Usar período customizado</span>
+                </label>
+                
+                {pdfUseCustomPeriod ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">
+                        Data Início
+                      </label>
+                      <input
+                        type="date"
+                        value={pdfStartDate}
+                        onChange={(e) => setPdfStartDate(e.target.value)}
+                        className="input-soft"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">
+                        Data Fim
+                      </label>
+                      <input
+                        type="date"
+                        value={pdfEndDate}
+                        onChange={(e) => setPdfEndDate(e.target.value)}
+                        className="input-soft"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">
+                      Mês
+                    </label>
+                    <input
+                      type="month"
+                      value={pdfMonth}
+                      onChange={(e) => setPdfMonth(e.target.value)}
+                      className="input-soft"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Colunas */}
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Colunas a Incluir</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.requestDate}
+                    onChange={(e) => setPdfColumns({...pdfColumns, requestDate: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Data Solicitação</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.categoryName}
+                    onChange={(e) => setPdfColumns({...pdfColumns, categoryName: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Categoria</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.clientName}
+                    onChange={(e) => setPdfColumns({...pdfColumns, clientName: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Cliente</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.title}
+                    onChange={(e) => setPdfColumns({...pdfColumns, title: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Título</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.description}
+                    onChange={(e) => setPdfColumns({...pdfColumns, description: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Descrição</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.deliveryDate}
+                    onChange={(e) => setPdfColumns({...pdfColumns, deliveryDate: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Data Entrega</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.cost}
+                    onChange={(e) => setPdfColumns({...pdfColumns, cost: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Custo</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.status}
+                    onChange={(e) => setPdfColumns({...pdfColumns, status: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Status</span>
+                </label>
+                
+                <label className="flex items-center gap-2 col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={pdfColumns.observations}
+                    onChange={(e) => setPdfColumns({...pdfColumns, observations: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-foreground">Observações</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Textos personalizados */}
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Textos Personalizados</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Cabeçalho (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={pdfHeaderText}
+                    onChange={(e) => setPdfHeaderText(e.target.value)}
+                    className="input-soft"
+                    placeholder="Ex: Relatório Interno - Confidencial"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Rodapé (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={pdfFooterText}
+                    onChange={(e) => setPdfFooterText(e.target.value)}
+                    className="input-soft"
+                    placeholder="Ex: Gerado por TaskManager - Confidencial"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Botões */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => setShowPdfModal(false)}
+                className="btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={exportPDF}
+                className="btn-primary flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Gerar PDF
+              </button>
+            </div>
+          </div>
         </Modal>
       </div>
     </div>
