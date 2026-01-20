@@ -1042,7 +1042,7 @@ export default function TasksPage() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Custo (R$) *
+                  Custo (Esforço) *
                 </label>
                 <input
                   type="number"

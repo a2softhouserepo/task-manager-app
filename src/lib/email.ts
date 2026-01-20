@@ -61,7 +61,7 @@ export async function sendTaskToAsana(task: TaskEmailData): Promise<{ success: b
     const emailBody = `
 Cliente: ${task.clientName}
 Categoria: ${task.category}
-Custo: R$ ${task.cost.toFixed(2)}
+Custo: ${task.cost}
 ${task.dueDate ? `Data de Entrega: ${new Date(task.dueDate).toLocaleDateString('pt-BR')}` : ''}
 
 Descrição:

@@ -611,7 +611,7 @@ export default function DashboardPage() {
                     },
                     ticks: {
                       color: chartColors.text,
-                      callback: (value) => `R$${(Number(value)/1000).toFixed(0)}k`,
+                      callback: (value) => `${(Number(value)/1000).toFixed(0)}k`,
                       padding: 8,
                     },
                   },
@@ -988,7 +988,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Custo (R$) *
+                Custo *
               </label>
               <input
                 type="number"
