@@ -147,18 +147,33 @@ export default function Header() {
 
             {/* Botões para rootAdmin */}
             {userRole === 'rootAdmin' && (
-              <button
-                onClick={() => router.push('/audit-logs')}
-                className={`p-2 rounded-lg transition-all
-                  ${pathname === '/audit-logs'
-                    ? 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/30 font-bold shadow'
-                    : 'text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 dark:text-gray-400 dark:hover:text-yellow-400 dark:hover:bg-yellow-950/30'}`}
-                title="Logs de Auditoria"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </button>
+              <>
+                <button
+                  onClick={() => router.push('/audit-logs')}
+                  className={`p-2 rounded-lg transition-all
+                    ${pathname === '/audit-logs'
+                      ? 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/30 font-bold shadow'
+                      : 'text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 dark:text-gray-400 dark:hover:text-yellow-400 dark:hover:bg-yellow-950/30'}`}
+                  title="Logs de Auditoria"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+
+                <button
+                  onClick={() => router.push('/backups')}
+                  className={`p-2 rounded-lg transition-all
+                    ${pathname === '/backups'
+                      ? 'text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-950/30 font-bold shadow'
+                      : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 dark:text-gray-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/30'}`}
+                  title="Backups do Sistema"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                </button>
+              </>
             )}
 
             {/* Botão Densidade */}

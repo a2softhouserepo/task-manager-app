@@ -85,6 +85,17 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
+        // Dispara backup automático diário quando rootAdmin loga
+        if (user.role === 'rootAdmin') {
+          // Import dinâmico para evitar dependência circular
+          import('@/lib/backup-service').then(({ checkAndTriggerAutoBackup }) => {
+            // Fire and forget - não espera terminar para não travar o login
+            checkAndTriggerAutoBackup().catch(err => 
+              console.error('Erro no backup automático:', err)
+            );
+          }).catch(err => console.error('Erro ao importar backup-service:', err));
+        }
+
         return {
           id: user._id.toString(),
           name: user.name,
