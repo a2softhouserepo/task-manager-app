@@ -26,7 +26,6 @@ const rl = readline.createInterface({
 });
 
 const collections = [
-  'users',
   'categories',
   'clients',
   'tasks',

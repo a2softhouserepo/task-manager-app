@@ -177,22 +177,21 @@ export async function restoreBackup(backupId: string, adminUserId: string) {
 
 /**
  * Limpa todos os dados das coleções principais (para teste)
+ * ⚠️ NÃO limpa usuários para preservar acesso ao sistema
  */
 export async function clearAllData(adminUserId: string) {
   await dbConnect();
 
-  const [tasksCount, clientsCount, categoriesCount, usersCount] = await Promise.all([
+  const [tasksCount, clientsCount, categoriesCount] = await Promise.all([
     Task.countDocuments({}),
     Client.countDocuments({}),
-    Category.countDocuments({}),
-    User.countDocuments({})
+    Category.countDocuments({})
   ]);
 
   await Promise.all([
     Task.deleteMany({}),
     Client.deleteMany({}),
-    Category.deleteMany({}),
-    User.deleteMany({})
+    Category.deleteMany({})
   ]);
 
   // Log da ação
@@ -207,8 +206,7 @@ export async function clearAllData(adminUserId: string) {
         deletedCounts: {
           tasks: tasksCount,
           clients: clientsCount,
-          categories: categoriesCount,
-          users: usersCount
+          categories: categoriesCount
         }
       }
     });
@@ -216,15 +214,14 @@ export async function clearAllData(adminUserId: string) {
     console.error('Erro ao criar log de auditoria:', e);
   }
 
-  console.log('🗑️ Todos os dados foram removidos');
+  console.log('🗑️ Todos os dados foram removidos (exceto usuários)');
 
   return { 
     success: true, 
     deleted: {
       tasks: tasksCount,
       clients: clientsCount,
-      categories: categoriesCount,
-      users: usersCount
+      categories: categoriesCount
     }
   };
 }

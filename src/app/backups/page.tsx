@@ -188,7 +188,7 @@ export default function BackupsPage() {
   };
 
   const clearAllData = async () => {
-    if (!confirm('⚠️ PERIGO: Isso irá APAGAR TODOS os dados do sistema!\n\n- Todas as Tarefas\n- Todos os Clientes\n- Todas as Categorias\n- Todos os Usuários\n\nEssa ação é IRREVERSÍVEL!\n\nDeseja continuar?')) {
+    if (!confirm('⚠️ PERIGO: Isso irá APAGAR os seguintes dados do sistema:\n\n- Todas as Tarefas\n- Todos os Clientes\n- Todas as Categorias\n\n⚠️ Os USUÁRIOS serão PRESERVADOS\n\nEssa ação é IRREVERSÍVEL!\n\nDeseja continuar?')) {
       return;
     }
 
@@ -204,8 +204,8 @@ export default function BackupsPage() {
       const res = await fetch('/api/backups', { method: 'DELETE' });
       const data = await res.json();
       if (res.ok) {
-        alert(`✅ Todos os dados foram removidos!\n\nItens excluídos:\n- Tarefas: ${data.deleted?.tasks || 0}\n- Clientes: ${data.deleted?.clients || 0}\n- Categorias: ${data.deleted?.categories || 0}\n- Usuários: ${data.deleted?.users || 0}\n\nVocê será redirecionado para o login.`);
-        window.location.href = '/login';
+        alert(`✅ Dados removidos com sucesso!\n\nItens excluídos:\n- Tarefas: ${data.deleted?.tasks || 0}\n- Clientes: ${data.deleted?.clients || 0}\n- Categorias: ${data.deleted?.categories || 0}\n\n✅ Usuários foram PRESERVADOS\n\nVocê será redirecionado para o dashboard.`);
+        window.location.href = '/dashboard';
       } else {
         alert('❌ Erro ao limpar dados: ' + (data.error || 'Erro desconhecido'));
       }
