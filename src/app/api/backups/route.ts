@@ -72,7 +72,6 @@ export async function DELETE(request: NextRequest) {
     const result = await clearAllData(userId);
 
     return NextResponse.json({ 
-      success: true,
       ...result,
       message: 'Todos os dados foram removidos com sucesso!' 
     });
