@@ -13,18 +13,17 @@ export async function createBackup(userId: string, type: 'AUTO' | 'MANUAL' = 'MA
   await dbConnect();
   
   // Coletar todos os dados (lean() para objetos JS puros, mais rápido)
-  const [tasks, clients, categories, users] = await Promise.all([
+  // ⚠️ Usuários não são incluídos no backup por segurança
+  const [tasks, clients, categories] = await Promise.all([
     Task.find({}).lean(),
     Client.find({}).lean(),
-    Category.find({}).lean(),
-    User.find({}).lean()
+    Category.find({}).lean()
   ]);
 
   const stats = {
     tasks: tasks.length,
     clients: clients.length,
-    categories: categories.length,
-    users: users.length,
+    categories: categories.length
   };
 
   const backupData = {
@@ -34,8 +33,7 @@ export async function createBackup(userId: string, type: 'AUTO' | 'MANUAL' = 'MA
     collections: {
       tasks,
       clients,
-      categories,
-      users
+      categories
     }
   };
 
@@ -125,19 +123,17 @@ export async function restoreBackup(backupId: string, adminUserId: string) {
     throw new Error('Dados do backup estão corrompidos');
   }
 
-  const { tasks, clients, categories, users } = content.collections;
+  const { tasks, clients, categories } = content.collections;
 
-  // Limpar coleções atuais
+  // Limpar coleções atuais (exceto usuários)
   await Promise.all([
     Task.deleteMany({}),
     Client.deleteMany({}),
-    Category.deleteMany({}),
-    User.deleteMany({})
+    Category.deleteMany({})
   ]);
 
-  // Inserir dados do backup
+  // Inserir dados do backup (usuários não são restaurados)
   const results = await Promise.all([
-    users?.length ? User.insertMany(users, { ordered: false }).catch(e => ({ error: e, count: 0 })) : [],
     clients?.length ? Client.insertMany(clients, { ordered: false }).catch(e => ({ error: e, count: 0 })) : [],
     categories?.length ? Category.insertMany(categories, { ordered: false }).catch(e => ({ error: e, count: 0 })) : [],
     tasks?.length ? Task.insertMany(tasks, { ordered: false }).catch(e => ({ error: e, count: 0 })) : [],
@@ -169,8 +165,7 @@ export async function restoreBackup(backupId: string, adminUserId: string) {
     stats: {
       tasks: tasks?.length || 0,
       clients: clients?.length || 0,
-      categories: categories?.length || 0,
-      users: users?.length || 0
+      categories: categories?.length || 0
     }
   };
 }

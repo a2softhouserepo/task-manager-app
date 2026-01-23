@@ -88,8 +88,8 @@ export default function BackupsPage() {
       const res = await fetch(`/api/backups/${id}/restore`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        alert(`✅ Sistema restaurado com sucesso!\n\nDados restaurados:\n- Tarefas: ${data.stats?.tasks || 0}\n- Clientes: ${data.stats?.clients || 0}\n- Categorias: ${data.stats?.categories || 0}\n- Usuários: ${data.stats?.users || 0}\n\nA página será recarregada.`);
-        window.location.href = '/login';
+        alert(`✅ Sistema restaurado com sucesso!\n\nDados restaurados:\n- Tarefas: ${data.stats?.tasks || 0}\n- Clientes: ${data.stats?.clients || 0}\n- Categorias: ${data.stats?.categories || 0}\n\n⚠️ Usuários não são incluídos no backup\n\nA página será recarregada.`);
+        window.location.href = '/dashboard';
       } else {
         alert('❌ Erro ao restaurar: ' + (data.error || 'Erro desconhecido'));
       }
@@ -172,7 +172,7 @@ export default function BackupsPage() {
       const data = await res.json();
       if (res.ok) {
         await loadBackups();
-        alert(`✅ Backup enviado com sucesso!\n\nEstatísticas:\n- Tarefas: ${data.backup?.stats?.tasks || 0}\n- Clientes: ${data.backup?.stats?.clients || 0}\n- Categorias: ${data.backup?.stats?.categories || 0}\n- Usuários: ${data.backup?.stats?.users || 0}`);
+        alert(`✅ Backup enviado com sucesso!\n\nEstatísticas:\n- Tarefas: ${data.backup?.stats?.tasks || 0}\n- Clientes: ${data.backup?.stats?.clients || 0}\n- Categorias: ${data.backup?.stats?.categories || 0}`);
       } else {
         alert('❌ Erro ao enviar backup: ' + (data.error || 'Erro desconhecido'));
       }
