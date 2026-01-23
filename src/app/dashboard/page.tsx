@@ -7,28 +7,19 @@ import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
 import { getChartColors } from '@/lib/chartColors';
 import Modal from '@/components/Modal';
-import { Bar, Doughnut } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from 'chart.js';
-
-// Registrar componentes do Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend as RechartsLegend
+} from 'recharts';
 
 interface Task {
   _id: string;
@@ -530,94 +521,57 @@ export default function DashboardPage() {
             Faturamento Mensal
           </h3>
           <div className="h-64">
-            <Bar
-              key={resolvedTheme}
-              data={{
-                labels: (stats?.monthlyData || []).map(d => d.month),
-                datasets: [
-                  {
-                    label: 'Faturamento',
-                    data: (stats?.monthlyData || []).map(d => d.total),
-                    backgroundColor: (context: any) => {
-                      const chart = context.chart;
-                      const {ctx, chartArea} = chart;
-                      if (!chartArea) return '#3b82f6';
-                      const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                      gradient.addColorStop(0, '#3b82f6');
-                      gradient.addColorStop(1, '#60a5fa');
-                      return gradient;
-                    },
-                    borderColor: '#2563eb',
-                    borderWidth: 2,
-                    borderRadius: 8,
-                    borderSkipped: false,
-                    hoverBackgroundColor: (context: any) => {
-                      const chart = context.chart;
-                      const {ctx, chartArea} = chart;
-                      if (!chartArea) return '#60a5fa';
-                      const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                      gradient.addColorStop(0, '#60a5fa');
-                      gradient.addColorStop(1, '#93c5fd');
-                      return gradient;
-                    },
-                    hoverBorderColor: '#3b82f6',
-                    hoverBorderWidth: 3,
-                  },
-                ],
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                  duration: 1000,
-                  easing: 'easeInOutQuart',
-                },
-                plugins: {
-                  legend: {
-                    display: false,
-                  },
-                  tooltip: {
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={(stats?.monthlyData || []).map(d => ({
+                  name: d.month,
+                  total: d.total,
+                }))}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#60a5fa" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={1} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  stroke={chartColors.grid} 
+                  vertical={false}
+                />
+                <XAxis 
+                  dataKey="name" 
+                  stroke={chartColors.text}
+                  tick={{ fill: chartColors.text, fontSize: 11 }}
+                  axisLine={{ stroke: chartColors.grid }}
+                />
+                <YAxis 
+                  stroke={chartColors.text}
+                  tick={{ fill: chartColors.text }}
+                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                  axisLine={false}
+                />
+                <RechartsTooltip 
+                  contentStyle={{
                     backgroundColor: chartColors.tooltipBg,
-                    titleColor: chartColors.tooltipText,
-                    bodyColor: chartColors.tooltipText,
-                    borderColor: chartColors.tooltipBorder,
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: false,
-                    callbacks: {
-                      label: (context) => formatCurrency(context.parsed.y ?? 0),
-                    },
-                  },
-                },
-                scales: {
-                  x: {
-                    grid: {
-                      display: false,
-                    },
-                    ticks: {
-                      color: chartColors.text,
-                      font: {
-                        size: 11,
-                      },
-                    },
-                  },
-                  y: {
-                    border: {
-                      display: false,
-                    },
-                    grid: {
-                      color: chartColors.grid,
-                      drawTicks: false,
-                    },
-                    ticks: {
-                      color: chartColors.text,
-                      callback: (value) => `${(Number(value)/1000).toFixed(0)}k`,
-                      padding: 8,
-                    },
-                  },
-                },
-              }}
-            />
+                    border: `1px solid ${chartColors.tooltipBorder}`,
+                    borderRadius: '6px',
+                    color: chartColors.tooltipText,
+                  }}
+                  labelStyle={{ color: chartColors.tooltipText }}
+                  itemStyle={{ color: chartColors.tooltipText }}
+                  formatter={(value: any) => [formatCurrency(value), 'Faturamento']}
+                  cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                />
+                <Bar 
+                  dataKey="total" 
+                  fill="url(#barGradient)"
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={60}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
@@ -627,86 +581,76 @@ export default function DashboardPage() {
             Top 5 Clientes
           </h3>
           <div className={`h-64 ${isCompact ? 'h-48' : 'h-64'}`}>
-            <Doughnut
-              key={resolvedTheme}
-              data={{
-                labels: (stats?.clientStats || []).map(c => c.clientName),
-                datasets: [
-                  {
-                    data: (stats?.clientStats || []).map(c => c.total),
-                    backgroundColor: COLORS.map(color => color + 'E6'),
-                    borderColor: COLORS,
-                    borderWidth: 3,
-                    hoverBackgroundColor: COLORS,
-                    hoverBorderColor: chartColors.tooltipBg,
-                    hoverBorderWidth: 4,
-                    hoverOffset: 10,
-                  },
-                ],
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                  animateRotate: true,
-                  animateScale: true,
-                  duration: 1000,
-                  easing: 'easeInOutQuart',
-                },
-                plugins: {
-                  legend: {
-                    position: 'right',
-                    labels: {
-                      color: chartColors.text,
-                      font: {
-                        size: 15,
-                      },
-                      padding: 10,
-                      usePointStyle: true,
-                      pointStyle: 'circle',
-                      generateLabels: (chart) => {
-                        const data = chart.data;
-                        if (data.labels && data.datasets.length) {
-                          return data.labels.map((label, i) => {
-                            const value = data.datasets[0].data[i] as number;
-                            const total = (data.datasets[0].data as number[]).reduce((a, b) => a + b, 0);
-                            const percent = ((value / total) * 100).toFixed(0);
-                            const labelStr = String(label);
-                            const maxLength = 15;
-                            const shortLabel = labelStr.length > maxLength ? labelStr.substring(0, maxLength) + '...' : labelStr;
-                            return {
-                              text: `${shortLabel} (${percent}%)`,
-                              fillStyle: COLORS[i % COLORS.length],
-                              hidden: false,
-                              index: i,
-                            };
-                          });
-                        }
-                        return [];
-                      },
-                    },
-                  },
-                  tooltip: {
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <defs>
+                  {COLORS.map((color, index) => (
+                    <linearGradient key={`gradient-${index}`} id={`pieGradient-${index}`} x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                      <stop offset="100%" stopColor={color} stopOpacity={1} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <Pie
+                  data={(stats?.clientStats || []).map((c, index) => ({
+                    name: c.clientName,
+                    value: c.total,
+                    color: COLORS[index % COLORS.length],
+                  }))}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={90}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ name, percent }) => {
+                    if (!name || percent === undefined) return '';
+                    const displayName = name.length > 12 ? name.substring(0, 12) + '...' : name;
+                    return `${displayName} ${(percent * 100).toFixed(0)}%`;
+                  }}
+                  labelLine={{ stroke: chartColors.text, strokeWidth: 1 }}
+                >
+                  {(stats?.clientStats || []).map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={`url(#pieGradient-${index % COLORS.length})`}
+                      stroke={resolvedTheme === 'dark' ? '#1f2937' : '#ffffff'}
+                      strokeWidth={2}
+                    />
+                  ))}
+                </Pie>
+                <RechartsTooltip 
+                  contentStyle={{
                     backgroundColor: chartColors.tooltipBg,
-                    titleColor: chartColors.tooltipText,
-                    bodyColor: chartColors.tooltipText,
-                    borderColor: chartColors.tooltipBorder,
-                    borderWidth: 1,
-                    padding: 12,
-                    callbacks: {
-                      label: (context) => {
-                        const label = context.label || '';
-                        const value = context.parsed;
-                        const total = (context.dataset.data as number[]).reduce((a, b) => a + b, 0);
-                        const percent = ((value / total) * 100).toFixed(1);
-                        return `${label}: ${formatCurrency(value)} (${percent}%)`;
-                      },
-                    },
-                  },
-                },
-                cutout: '60%',
-              }}
-            />
+                    border: `1px solid ${chartColors.tooltipBorder}`,
+                    borderRadius: '6px',
+                    color: chartColors.tooltipText,
+                  }}
+                  labelStyle={{ color: chartColors.tooltipText }}
+                  itemStyle={{ color: chartColors.tooltipText }}
+                  formatter={(value: any) => {
+                    const total = (stats?.clientStats || []).reduce((sum, c) => sum + c.total, 0);
+                    const percent = ((value / total) * 100).toFixed(1);
+                    return [`${formatCurrency(value)} (${percent}%)`];
+                  }}
+                />
+                <RechartsLegend 
+                  layout="vertical"
+                  align="right"
+                  verticalAlign="middle"
+                  iconType="circle"
+                  wrapperStyle={{ 
+                    paddingLeft: '20px',
+                    fontSize: '13px',
+                    color: chartColors.text
+                  }}
+                  formatter={(value: string) => {
+                    const displayValue = value.length > 15 ? value.substring(0, 15) + '...' : value;
+                    return <span style={{ color: chartColors.text }}>{displayValue}</span>;
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

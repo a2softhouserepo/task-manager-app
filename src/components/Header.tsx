@@ -101,20 +101,6 @@ export default function Header() {
               </svg>
             </button>
 
-            {/* Botão Clientes - Disponível para todos */}
-            <button
-              onClick={() => router.push('/clients')}
-              className={`p-2 rounded-lg transition-all
-                ${pathname === '/clients'
-                  ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950/30 font-bold shadow'
-                  : 'text-gray-600 hover:text-green-600 hover:bg-green-50 dark:text-gray-400 dark:hover:text-green-400 dark:hover:bg-green-950/30'}`}
-              title="Gerenciar Clientes"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </button>
-
             {/* Botão Tarefas - Disponível para todos */}
             <button
               onClick={() => router.push('/tasks')}
@@ -143,8 +129,21 @@ export default function Header() {
               </svg>
             </button>
 
-            {/* Botões para admin e rootAdmin */}
+            {/* Botão Clientes - Disponível para todos */}
+            <button
+              onClick={() => router.push('/clients')}
+              className={`p-2 rounded-lg transition-all
+                ${pathname === '/clients'
+                  ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950/30 font-bold shadow'
+                  : 'text-gray-600 hover:text-green-600 hover:bg-green-50 dark:text-gray-400 dark:hover:text-green-400 dark:hover:bg-green-950/30'}`}
+              title="Gerenciar Clientes"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </button>
 
+            {/* Botões para admin e rootAdmin */}
             {(userRole === 'admin' || userRole === 'rootAdmin') && (
               <button
                 onClick={() => router.push('/users')}
