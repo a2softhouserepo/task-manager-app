@@ -5,7 +5,7 @@ import dbConnect from '@/lib/mongodb';
 import Category from '@/models/Category';
 import Task from '@/models/Task';
 import { z } from 'zod';
-import { logAudit, createAuditSnapshot } from '@/lib/audit';
+import { logAudit, createAuditSnapshot, logAuthFailure } from '@/lib/audit';
 
 const updateCategorySchema = z.object({
   name: z.string().min(1, 'Nome não pode estar vazio').max(100, 'Nome muito longo').optional(),
@@ -66,6 +66,12 @@ export async function PUT(
 
     // RootAdmin pode editar todos, outros só podem editar seus próprios registros
     if (userRole !== 'rootAdmin' && category.createdBy !== currentUserId) {
+      void logAuthFailure({
+        resource: 'CATEGORY',
+        resourceId: id,
+        reason: 'Tentativa de editar categoria de outro usuário',
+        attemptedAction: 'UPDATE',
+      });
       return NextResponse.json(
         { error: 'Você só pode editar categorias que você cadastrou' },
         { status: 403 }
@@ -145,6 +151,12 @@ export async function DELETE(
 
     // User não pode deletar
     if (userRole === 'user') {
+      void logAuthFailure({
+        resource: 'CATEGORY',
+        resourceId: 'unknown',
+        reason: 'Usuário comum tentou deletar categoria',
+        attemptedAction: 'DELETE',
+      });
       return NextResponse.json(
         { error: 'Usuários não podem deletar registros' },
         { status: 403 }
@@ -161,6 +173,12 @@ export async function DELETE(
 
     // Admin só pode deletar seus próprios registros
     if (userRole === 'admin' && category.createdBy !== currentUserId) {
+      void logAuthFailure({
+        resource: 'CATEGORY',
+        resourceId: id,
+        reason: 'Admin tentou deletar categoria de outro usuário',
+        attemptedAction: 'DELETE',
+      });
       return NextResponse.json(
         { error: 'Você só pode deletar categorias que você cadastrou' },
         { status: 403 }

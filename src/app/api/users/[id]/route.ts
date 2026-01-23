@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import { z } from 'zod';
-import { logAudit, createAuditSnapshot } from '@/lib/audit';
+import { logAudit, createAuditSnapshot, logAuthFailure, logSensitiveRead } from '@/lib/audit';
 
 const updateUserSchema = z.object({
   username: z.string().min(3, 'Username deve ter pelo menos 3 caracteres').max(50, 'Username muito longo').optional(),
@@ -32,6 +32,16 @@ export async function GET(
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
 
+    // Log sensitive data access (GDPR compliance)
+    void logSensitiveRead({
+      resource: 'USER',
+      resourceId: id,
+      details: {
+        viewedUserEmail: user.email,
+        accessedFields: ['username', 'name', 'email', 'role'],
+      },
+    });
+
     return NextResponse.json({ user });
   } catch (error: any) {
     console.error('Error fetching user:', error);
@@ -58,6 +68,12 @@ export async function PUT(
 
     // RootAdmin pode editar todos, outros só podem editar seus próprios registros
     if (userRole !== 'rootAdmin' && currentUserId !== id) {
+      void logAuthFailure({
+        resource: 'USER',
+        resourceId: id,
+        reason: 'Tentativa de editar perfil de outro usuário',
+        attemptedAction: 'UPDATE',
+      });
       return NextResponse.json(
         { error: 'Você só pode editar seu próprio perfil' },
         { status: 403 }
@@ -134,6 +150,12 @@ export async function DELETE(
     const currentUserId = (session.user as any).id;
 
     if (userRole !== 'rootAdmin') {
+      void logAuthFailure({
+        resource: 'USER',
+        resourceId: 'unknown',
+        reason: 'Usuário sem permissão tentou deletar outro usuário',
+        attemptedAction: 'DELETE',
+      });
       return NextResponse.json(
         { error: 'Apenas Root Admin pode deletar usuários' },
         { status: 403 }

@@ -2,17 +2,38 @@ import mongoose, { Schema, Model, models } from 'mongoose';
 
 const DB_PREFIX = process.env.DB_PREFIX || 'tasks-';
 
+export type AuditAction = 
+  | 'CREATE' 
+  | 'UPDATE' 
+  | 'DELETE' 
+  | 'READ' 
+  | 'LOGIN_SUCCESS' 
+  | 'LOGIN_FAILED' 
+  | 'AUTH_FAILURE' 
+  | 'EXPORT' 
+  | 'BACKUP_DOWNLOAD' 
+  | 'BACKUP_RESTORE'
+  | 'IMPORT';
+
+export type AuditResource = 'TASK' | 'USER' | 'CLIENT' | 'CATEGORY' | 'AUDIT_LOG' | 'BACKUP' | 'SYSTEM';
+
+export type AuditSeverity = 'INFO' | 'WARN' | 'CRITICAL';
+
+export type AuditStatus = 'SUCCESS' | 'FAILURE';
+
 export interface IAuditLog {
   _id: string;
   userId: string;
   userName: string;
   userEmail: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN_SUCCESS' | 'LOGIN_FAILED' | 'EXPORT';
-  resource: 'TASK' | 'USER' | 'CLIENT' | 'CATEGORY' | 'AUDIT_LOG';
+  action: AuditAction;
+  resource: AuditResource;
   resourceId?: string;
   details?: any;
   ipAddress?: string;
   userAgent?: string;
+  severity: AuditSeverity;
+  status: AuditStatus;
   createdAt: Date;
 }
 
@@ -35,13 +56,13 @@ const AuditLogSchema = new Schema<IAuditLog>(
     action: {
       type: String,
       required: true,
-      enum: ['CREATE', 'UPDATE', 'DELETE', 'LOGIN_SUCCESS', 'LOGIN_FAILED', 'EXPORT'],
+      enum: ['CREATE', 'UPDATE', 'DELETE', 'READ', 'LOGIN_SUCCESS', 'LOGIN_FAILED', 'AUTH_FAILURE', 'EXPORT', 'BACKUP_DOWNLOAD', 'BACKUP_RESTORE', 'IMPORT'],
       index: true,
     },
     resource: {
       type: String,
       required: true,
-      enum: ['TASK', 'USER', 'CLIENT', 'CATEGORY', 'AUDIT_LOG'],
+      enum: ['TASK', 'USER', 'CLIENT', 'CATEGORY', 'AUDIT_LOG', 'BACKUP', 'SYSTEM'],
       index: true,
     },
     resourceId: {
@@ -56,6 +77,20 @@ const AuditLogSchema = new Schema<IAuditLog>(
     },
     userAgent: {
       type: String,
+    },
+    severity: {
+      type: String,
+      required: true,
+      enum: ['INFO', 'WARN', 'CRITICAL'],
+      default: 'INFO',
+      index: true,
+    },
+    status: {
+      type: String,
+      required: true,
+      enum: ['SUCCESS', 'FAILURE'],
+      default: 'SUCCESS',
+      index: true,
     },
   },
   {

@@ -6,7 +6,7 @@ import Task from '@/models/Task';
 import Client from '@/models/Client';
 import Category from '@/models/Category';
 import { z } from 'zod';
-import { logAudit, createAuditSnapshot } from '@/lib/audit';
+import { logAudit, createAuditSnapshot, logAuthFailure } from '@/lib/audit';
 
 const updateTaskSchema = z.object({
   requestDate: z.string().or(z.date()).optional(),
@@ -71,6 +71,12 @@ export async function PUT(
 
     // RootAdmin pode editar todos, outros só podem editar seus próprios registros
     if (userRole !== 'rootAdmin' && task.createdBy !== currentUserId) {
+      void logAuthFailure({
+        resource: 'TASK',
+        resourceId: id,
+        reason: 'Tentativa de editar tarefa de outro usuário',
+        attemptedAction: 'UPDATE',
+      });
       return NextResponse.json(
         { error: 'Você só pode editar tarefas que você cadastrou' },
         { status: 403 }
@@ -164,6 +170,12 @@ export async function DELETE(
 
     // User não pode deletar
     if (userRole === 'user') {
+      void logAuthFailure({
+        resource: 'TASK',
+        resourceId: 'unknown',
+        reason: 'Usuário comum tentou deletar tarefa',
+        attemptedAction: 'DELETE',
+      });
       return NextResponse.json(
         { error: 'Usuários não podem deletar registros' },
         { status: 403 }
@@ -180,6 +192,12 @@ export async function DELETE(
 
     // Admin só pode deletar seus próprios registros
     if (userRole === 'admin' && task.createdBy !== currentUserId) {
+      void logAuthFailure({
+        resource: 'TASK',
+        resourceId: id,
+        reason: 'Admin tentou deletar tarefa de outro usuário',
+        attemptedAction: 'DELETE',
+      });
       return NextResponse.json(
         { error: 'Você só pode deletar tarefas que você cadastrou' },
         { status: 403 }

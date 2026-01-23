@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import Client from '@/models/Client';
 import { z } from 'zod';
-import { logAudit, createAuditSnapshot } from '@/lib/audit';
+import { logAudit, createAuditSnapshot, logAuthFailure, logSensitiveRead } from '@/lib/audit';
 import { decryptString, isEncrypted } from '@/lib/crypto';
 
 // Helper function to decrypt client fields if needed
@@ -64,6 +64,16 @@ export async function GET(
       updatedAt: clientObj.updatedAt,
     };
 
+    // Log sensitive data access (GDPR compliance)
+    void logSensitiveRead({
+      resource: 'CLIENT',
+      resourceId: id,
+      details: {
+        clientName: clientPlain.name,
+        accessedFields: ['name', 'phone', 'email', 'address', 'notes'],
+      },
+    });
+
     return NextResponse.json({ client: clientPlain });
   } catch (error: any) {
     console.error('Error fetching client:', error);
@@ -97,6 +107,13 @@ export async function PUT(
 
     // RootAdmin pode editar todos, outros só podem editar seus próprios registros
     if (userRole !== 'rootAdmin' && client.createdBy !== currentUserId) {
+      // Log authorization failure for security monitoring
+      void logAuthFailure({
+        resource: 'CLIENT',
+        resourceId: id,
+        reason: 'Tentativa de editar cliente de outro usuário',
+        attemptedAction: 'UPDATE',
+      });
       return NextResponse.json(
         { error: 'Você só pode editar clientes que você cadastrou' },
         { status: 403 }
@@ -191,6 +208,12 @@ export async function DELETE(
 
     // User não pode deletar
     if (userRole === 'user') {
+      void logAuthFailure({
+        resource: 'CLIENT',
+        resourceId: 'unknown',
+        reason: 'Usuário comum tentou deletar cliente',
+        attemptedAction: 'DELETE',
+      });
       return NextResponse.json(
         { error: 'Usuários não podem deletar registros' },
         { status: 403 }
@@ -207,6 +230,12 @@ export async function DELETE(
 
     // Admin só pode deletar seus próprios registros
     if (userRole === 'admin' && client.createdBy !== currentUserId) {
+      void logAuthFailure({
+        resource: 'CLIENT',
+        resourceId: id,
+        reason: 'Admin tentou deletar cliente de outro usuário',
+        attemptedAction: 'DELETE',
+      });
       return NextResponse.json(
         { error: 'Você só pode deletar clientes que você cadastrou' },
         { status: 403 }
