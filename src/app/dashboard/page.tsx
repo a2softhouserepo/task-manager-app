@@ -97,7 +97,7 @@ export default function DashboardPage() {
 
   // Ordenação
   const [sortColumn, setSortColumn] = useState<'requestDate' | 'deliveryDate' | 'cost'>('requestDate');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Modal de nova tarefa
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -798,7 +798,7 @@ export default function DashboardPage() {
                     onClick={() => handleSort('requestDate')}
                     className="flex items-center gap-1 hover:text-foreground transition-colors"
                   >
-                    DATA SOL.
+                    DATA
                     {renderSortIcon('requestDate')}
                   </button>
                 </th>

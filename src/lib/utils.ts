@@ -7,7 +7,27 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatDate(date: Date | string): string {
-  return new Intl.DateTimeFormat('pt-BR').format(new Date(date));
+  // Se for uma string no formato YYYY-MM-DD (apenas data, sem hora),
+  // interpreta como data local ao invés de UTC para evitar problemas de timezone
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split('-').map(Number);
+    return new Intl.DateTimeFormat('pt-BR').format(new Date(year, month - 1, day));
+  }
+  
+  // Para strings ISO completas ou objetos Date, converte e ajusta para timezone local
+  const dateObj = new Date(date);
+  
+  // Se a data vier do MongoDB como ISO string (ex: "2025-02-15T00:00:00.000Z"),
+  // vamos usar apenas a parte da data em UTC para evitar shift de timezone
+  if (typeof date === 'string' && date.includes('T')) {
+    const utcDate = new Date(date);
+    const year = utcDate.getUTCFullYear();
+    const month = utcDate.getUTCMonth();
+    const day = utcDate.getUTCDate();
+    return new Intl.DateTimeFormat('pt-BR').format(new Date(year, month, day));
+  }
+  
+  return new Intl.DateTimeFormat('pt-BR').format(dateObj);
 }
 
 export function formatDateTime(date: Date | string): string {
