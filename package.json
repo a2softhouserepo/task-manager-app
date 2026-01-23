@@ -22,7 +22,6 @@
     "categories:update-icons": "node scripts/update-category-icons.js",
     "seed:all": "npm run users:seed && npm run clients:seed && npm run categories:seed && npm run tasks:seed",
     "clear:all": "npm run tasks:clear && npm run categories:clear && npm run clients:clear && npm run audit:clear",
-    "import:2025": "node scripts/import-full-2025.js",
     "import:clear": "node scripts/clear-imported-data.js",
     "test:db": "node test-connection.js"
   },

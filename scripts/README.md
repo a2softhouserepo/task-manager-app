@@ -122,23 +122,11 @@ npm run clear:all
 
 ## 📥 Import (Importação de Dados)
 
-Scripts para importar dados de arquivos externos (Excel).
-
-### `import-full-2025.js`
-Importa dados completos do arquivo Excel 2025 localizado em `import-file/`.
-
-**Funcionalidades:**
-- Importa clientes, categorias e tarefas
-- Calcula custos automaticamente (1h = 100 unidades)
-- Vincula tarefas a clientes e categorias existentes
-- Cria entidades faltantes automaticamente
+Scripts relacionados à importação e limpeza de dados externos. Atualmente o repositório não contém um script ativo de importação automática; mantenha apenas o comando para limpar dados importados.
 
 ```bash
-npm run import:2025
+npm run import:clear # Limpar dados importados
 ```
-
-**Arquivo esperado:**  
-`import-file/Relação de serviços prestados em 2025.xlsx`
 
 ---
 
@@ -207,7 +195,6 @@ npm run import:clear # Limpar dados importados
 
 ### Import
 ```bash
-npm run import:2025  # Importar dados do Excel 2025
 npm run import:clear # Limpar dados importados
 ```
 
