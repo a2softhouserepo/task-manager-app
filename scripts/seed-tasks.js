@@ -18,7 +18,7 @@ require('dotenv').config({ path: '.env.local' });
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const ENCRYPT_KEY_SECRET = process.env.ENCRYPT_KEY_SECRET;
-const DB_PREFIX = 'tasks-';
+const DB_PREFIX = process.env.DB_PREFIX;
 
 if (!MONGODB_URI) {
   console.error('MONGODB_URI not found in .env.local');
