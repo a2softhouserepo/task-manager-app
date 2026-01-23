@@ -68,7 +68,7 @@ export default function Header() {
             className={`flex items-center gap-3 min-w-0 ${!isDashboard ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
             disabled={isDashboard}
           >
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-lg bg-linear-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
@@ -85,6 +85,21 @@ export default function Header() {
 
           {/* Ações e Perfil */}
           <div className="flex items-center gap-3 sm:gap-4">
+
+            {/* Botão Dashboard - Disponível para todos */}
+            <button
+              onClick={() => router.push('/dashboard')}
+              className={`p-2 rounded-lg transition-all
+                ${pathname === '/dashboard'
+                  ? 'text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-950/30 font-bold shadow'
+                  : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-950/30'}`}
+              title="Dashboard"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" />
+              </svg>
+            </button>
 
             {/* Botão Clientes - Disponível para todos */}
             <button
@@ -217,7 +232,7 @@ export default function Header() {
               </div>
               
               {/* Avatar */}
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+              <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
                 {session?.user?.name?.charAt(0).toUpperCase()}
               </div>
 
