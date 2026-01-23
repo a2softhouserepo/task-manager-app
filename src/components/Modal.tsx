@@ -14,18 +14,11 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
+  // Effect 1: Manage focus and body scroll (runs only when isOpen changes)
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
     if (isOpen) {
       // Salvar o elemento que tinha foco antes do modal abrir
       previousActiveElement.current = document.activeElement as HTMLElement;
-
-      document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
 
       // Focar no modal após um pequeno delay para garantir que está renderizado
@@ -49,8 +42,24 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  // Effect 2: Handle Escape key (re-binds if onClose changes)
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
 
