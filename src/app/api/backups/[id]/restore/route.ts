@@ -23,7 +23,6 @@ export async function POST(
     const result = await restoreBackup(id, userId);
 
     return NextResponse.json({ 
-      success: true,
       ...result,
       message: 'Backup restaurado com sucesso!' 
     });
