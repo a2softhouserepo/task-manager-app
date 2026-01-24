@@ -50,9 +50,21 @@ Cria tarefas de exemplo vinculadas a clientes e categorias existentes.
 npm run tasks:seed
 ```
 
-### 🎯 Popular Tudo de Uma Vez
+### `seed-all.js`
+Script completo que executa todos os seeds em sequência com melhor controle de erros e output.
+
 ```bash
-npm run seed:all
+node scripts/seed-all.js
+# ou
+npm run seed:all:script
+```
+
+**Ordem de execução:** users → categories → clients → tasks
+
+### 🎯 Popular Tudo de Uma Vez (Comandos NPM)
+```bash
+npm run seed:all         # Usando comandos encadeados
+npm run seed:all:script  # Usando script dedicado (recomendado)
 ```
 **Executa na ordem:** users → clients → categories → tasks
 
@@ -170,8 +182,9 @@ npm run lint         # Executar linter
 
 ### Seeds
 ```bash
-npm run seed:all     # Popular tudo (users + clients + categories + tasks)
-npm run users:seed   # Popular usuários
+npm run seed:all         # Popular tudo (comandos encadeados)
+npm run seed:all:script  # Popular tudo (script dedicado - recomendado)
+npm run users:seed       # Popular usuários
 npm run clients:seed # Popular clientes
 npm run categories:seed # Popular categorias
 npm run tasks:seed   # Popular tarefas

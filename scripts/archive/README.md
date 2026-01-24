@@ -15,7 +15,6 @@ Ferramentas de desenvolvimento e verificação que não fazem parte do fluxo ati
 
 ## Scripts Redundantes
 Estes scripts duplicavam funcionalidade já existente no `package.json`:
-- `seed-all.js` - Substituído por: `npm run seed:all`
 - `clear-all.js` - Substituído por: `npm run clear:all`
 
 ---
