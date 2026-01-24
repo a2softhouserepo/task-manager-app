@@ -124,10 +124,23 @@ Remove apenas dados importados (mantém seeds).
 npm run import:clear
 ```
 
-### 🎯 Limpar Tudo de Uma Vez
+### `clear-all.js`
+Script completo que executa todos os clears em sequência com melhor controle de erros e output.
+
 ```bash
-npm run clear:all
+node scripts/clear-all.js
+# ou
+npm run clear:all:script
 ```
+
+**Ordem de execução:** tasks → categories → clients → audit-logs
+
+### 🎯 Limpar Tudo de Uma Vez (Comandos NPM)
+```bash
+npm run clear:all         # Usando comandos encadeados
+npm run clear:all:script  # Usando script dedicado (recomendado)
+```
+**Executa na ordem:** tasks → categories → clients → audit-logs
 **Executa na ordem:** tasks → categories → clients → audit-logs
 
 ---
@@ -192,13 +205,14 @@ npm run tasks:seed   # Popular tarefas
 
 ### Clear
 ```bash
-npm run clear:all    # Limpar tudo (tasks + categories + clients + audit)
-npm run users:clear  # Limpar usuários
-npm run clients:clear # Limpar clientes
-npm run categories:clear # Limpar categorias
-npm run tasks:clear  # Limpar tarefas
-npm run audit:clear  # Limpar logs de auditoria
-npm run import:clear # Limpar dados importados
+npm run clear:all         # Limpar tudo (comandos encadeados)
+npm run clear:all:script  # Limpar tudo (script dedicado - recomendado)
+npm run users:clear       # Limpar usuários
+npm run clients:clear     # Limpar clientes
+npm run categories:clear  # Limpar categorias
+npm run tasks:clear       # Limpar tarefas
+npm run audit:clear       # Limpar logs de auditoria
+npm run import:clear      # Limpar dados importados
 ```
 
 ### Import

@@ -22,6 +22,7 @@
     "seed:all": "npm run users:seed && npm run clients:seed && npm run categories:seed && npm run tasks:seed",
     "seed:all:script": "node scripts/seed-all.js",
     "clear:all": "npm run tasks:clear && npm run categories:clear && npm run clients:clear && npm run audit:clear",
+    "clear:all:script": "node scripts/clear-all.js",
     "import:clear": "node scripts/clear-imported-data.js",
     "test:db": "node test-connection.js"
   },
