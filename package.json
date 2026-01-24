@@ -19,7 +19,6 @@
     "audit:clear": "node scripts/clear-audit-logs.js",
     "audit:archive": "node scripts/archive-audit-logs.js",
     "audit:archive:execute": "node scripts/archive-audit-logs.js --execute",
-    "categories:update-icons": "node scripts/update-category-icons.js",
     "seed:all": "npm run users:seed && npm run clients:seed && npm run categories:seed && npm run tasks:seed",
     "clear:all": "npm run tasks:clear && npm run categories:clear && npm run clients:clear && npm run audit:clear",
     "import:clear": "node scripts/clear-imported-data.js",

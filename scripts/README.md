@@ -154,12 +154,7 @@ npm run audit:archive:execute
 **Arquivos gerados:**  
 `archive-logs/audit-logs-YYYY-MM-DD.json`
 
-### `update-category-icons.js`
-Atualiza ícones de categorias específicas e sincroniza com as tarefas vinculadas.
-
-```bash
-npm run categories:update-icons
-```
+<!-- seção `update-category-icons.js` removida -->
 
 ---
 
