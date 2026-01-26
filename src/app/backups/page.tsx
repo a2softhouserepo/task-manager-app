@@ -310,10 +310,30 @@ export default function BackupsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
-            <p className="font-medium text-yellow-800 dark:text-yellow-200">Backup Automático</p>
-            <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-              O sistema cria automaticamente um backup diário quando o Root Admin faz login.
-              Backups marcados como "AUTO" foram criados automaticamente.
+            <p className="font-medium text-yellow-800 dark:text-yellow-200">📦 O que está incluído no Backup</p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-2">
+              Cada backup contém os dados das seguintes tabelas:
+            </p>
+            <ul className="text-sm text-yellow-700 dark:text-yellow-300 mt-2 space-y-1 ml-4">
+              <li className="flex items-center gap-2">
+                <span>📋</span>
+                <span><strong>Tarefas</strong> - Todos os registros de tarefas e suas informações</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>👥</span>
+                <span><strong>Clientes</strong> - Todos os clientes cadastrados</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>🏷️</span>
+                <span><strong>Categorias</strong> - Todas as categorias de tarefas</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>👤</span>
+                <span><strong>Usuários não são inclusos</strong> - Os usuários e suas permissões não são backupeados</span>
+              </li>
+            </ul>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-3">
+              O sistema cria automaticamente um backup diário quando o Root Admin faz login. Backups marcados como "AUTO" foram criados automaticamente.
             </p>
           </div>
         </div>
@@ -451,6 +471,30 @@ export default function BackupsPage() {
         <p className="text-red-700 dark:text-red-300 text-sm mt-2 mb-4">
           As ações abaixo são irreversíveis. Use apenas para testes ou quando absolutamente necessário.
         </p>
+        
+        {/* Informações sobre tabelas a serem limpas */}
+        <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-300 dark:border-red-800">
+          <p className="text-xs font-medium text-red-800 dark:text-red-200 mb-2">📋 Tabelas que serão limpas:</p>
+          <ul className="text-xs text-red-700 dark:text-red-300 space-y-1">
+            <li className="flex items-center gap-2">
+              <span className="text-red-600 dark:text-red-400">•</span>
+              <span><strong>Tarefas</strong> - Todos os registros de tarefas serão removidos</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-red-600 dark:text-red-400">•</span>
+              <span><strong>Clientes</strong> - Todos os clientes cadastrados serão removidos</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-red-600 dark:text-red-400\">•</span>
+              <span><strong>Categorias</strong> - Todas as categorias serão removidas</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-red-600 dark:text-red-400">•</span>
+              <span><strong>Usuários são preservados</strong> - Os usuários do sistema não serão afetados</span>
+            </li>
+          </ul>
+        </div>
+        
         <button
           onClick={clearAllData}
           disabled={processing}
