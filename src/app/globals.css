@@ -228,6 +228,16 @@ body {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  transition: all 0.3s ease;
+}
+
+/* Modal com densidade comfortable - maior */
+.density-comfortable .modal-content {
+  max-width: 48rem;
+}
+
+.density-comfortable .modal-content.modal-xl {
+  max-width: 64rem;
 }
 
 .dark .modal-content {
@@ -268,3 +278,121 @@ input[type="radio"]:focus-visible {
   outline: 3px solid #60a5fa;
   outline-offset: 2px;
 }
+
+/* ======================================
+   SISTEMA DE DENSIDADE
+   ====================================== */
+
+/* Container Principal - Densidade */
+.density-container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  transition: all 0.3s ease;
+}
+
+/* Modo Compacto: container limitado (padrão) */
+.density-compact .density-container {
+  max-width: 80rem; /* max-w-7xl */
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .density-compact .density-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .density-compact .density-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Modo Comfortable/FullWidth: 100% viewport */
+.density-comfortable .density-container {
+  max-width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .density-comfortable .density-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .density-comfortable .density-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Espaçamentos verticais baseados em densidade */
+.density-compact .density-py {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.density-comfortable .density-py {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.density-compact .density-gap {
+  gap: 1rem;
+}
+
+.density-comfortable .density-gap {
+  gap: 1.5rem;
+}
+
+.density-compact .density-mb {
+  margin-bottom: 0.75rem;
+}
+
+.density-comfortable .density-mb {
+  margin-bottom: 2rem;
+}
+
+/* Cards com densidade */
+.density-compact .density-card-padding {
+  padding: 0.75rem;
+}
+
+.density-comfortable .density-card-padding {
+  padding: 1.5rem;
+}
+
+/* Tabelas com densidade */
+.density-compact .density-table-cell {
+  padding: 0.5rem 0.75rem;
+}
+
+.density-comfortable .density-table-cell {
+  padding: 1rem 1.5rem;
+}
+
+/* Header interno da página */
+.density-compact .density-header-mb {
+  margin-bottom: 0.75rem;
+}
+
+.density-comfortable .density-header-mb {
+  margin-bottom: 2rem;
+}
+
+/* Grid de cards com densidade */
+.density-compact .density-grid-gap {
+  gap: 1rem;
+}
+
+.density-comfortable .density-grid-gap {
+  gap: 1.5rem;
+}
+

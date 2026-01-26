@@ -32,7 +32,8 @@ const ACTION_COLORS: Record<string, string> = {
 export default function AuditLogsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { isCompact } = useUI();
+  const { density } = useUI();
+  const isCompact = density === 'compact';
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -105,9 +106,9 @@ export default function AuditLogsPage() {
   }
 
   return (
-    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${isCompact ? 'py-4' : 'py-8'}`}>
+    <div className="density-container density-py">
       {/* Header */}
-        <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between ${isCompact ? 'mb-3' : 'mb-8'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Logs de Auditoria

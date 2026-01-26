@@ -67,7 +67,8 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { isCompact, resolvedTheme } = useUI();
+  const { density, resolvedTheme } = useUI();
+  const isCompact = density === 'compact';
   const chartColors = getChartColors(resolvedTheme || 'light');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -438,9 +439,9 @@ export default function DashboardPage() {
   const totalFiltered = tasks.reduce((sum, t) => sum + t.cost, 0);
 
   return (
-    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${isCompact ? 'py-4' : 'py-8'}`}>
+    <div className="density-container density-py">
       {/* Header */}
-      <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between ${isCompact ? 'mb-4' : 'mb-8'}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
             Dashboard
@@ -463,8 +464,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 ${isCompact ? 'mb-4' : 'mb-8'}`}>
-        <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
+      <div className="grid grid-cols-1 md:grid-cols-3 density-grid-gap density-mb">
+        <div className="card-soft density-card-padding">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
               <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -480,32 +481,32 @@ export default function DashboardPage() {
           </div>
         </div>
         
-        <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
+        <div className="card-soft density-card-padding">
           <div className="flex items-center">
-            <div className={`p-3 rounded-full bg-green-100 dark:bg-green-900/30 ${isCompact ? 'p-2' : 'p-3'}`}>
-              <svg className={`w-6 h-6 text-green-600 dark:text-green-400 ${isCompact ? 'w-5 h-5' : 'w-6 h-6'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
+              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
             <div className="ml-4">
-              <p className={`text-sm font-medium text-muted-foreground ${isCompact ? 'text-xs' : 'text-sm'}`}>Tarefas Mês Atual</p>
-              <p className={`text-2xl font-bold text-foreground ${isCompact ? 'text-xl' : 'text-2xl'}`}>
+              <p className="text-sm font-medium text-muted-foreground">Tarefas Mês Atual</p>
+              <p className="text-2xl font-bold text-foreground">
                 {stats?.currentMonth.count || 0}
               </p>
             </div>
           </div>
         </div>
         
-        <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
+        <div className="card-soft density-card-padding">
           <div className="flex items-center">
-            <div className={`p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 ${isCompact ? 'p-2' : 'p-3'}`}>
-              <svg className={`w-6 h-6 text-purple-600 dark:text-purple-400 ${isCompact ? 'w-5 h-5' : 'w-6 h-6'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30">
+              <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             <div className="ml-4">
-              <p className={`text-sm font-medium text-muted-foreground ${isCompact ? 'text-xs' : 'text-sm'}`}>Total de Clientes</p>
-              <p className={`text-2xl font-bold text-foreground ${isCompact ? 'text-xl' : 'text-2xl'}`}>
+              <p className="text-sm font-medium text-muted-foreground">Total de Clientes</p>
+              <p className="text-2xl font-bold text-foreground">
                 {clients.length}
               </p>
             </div>
@@ -514,10 +515,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Gráficos */}
-      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${isCompact ? 'mb-4' : 'mb-8'}`}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 density-grid-gap density-mb">
         {/* Gráfico de Barras - Mensal */}
-        <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
-          <h3 className={`text-lg font-semibold text-foreground ${isCompact ? 'mb-2' : 'mb-4'}`}>
+        <div className="card-soft density-card-padding">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
             Faturamento Mensal
           </h3>
           <div className="h-64">

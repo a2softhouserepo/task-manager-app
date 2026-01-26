@@ -41,7 +41,8 @@ type ClientFormData = z.infer<typeof clientSchema>;
 export default function ClientsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { isCompact } = useUI();
+  const { density } = useUI();
+  const isCompact = density === 'compact';
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -294,9 +295,9 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${isCompact ? 'py-4' : 'py-8'}`}>
+    <div className="density-container density-py">
       {/* Header */}
-        <div className={`flex items-center justify-between ${isCompact ? 'mb-3' : 'mb-8'}`}>
+        <div className="flex items-center justify-between density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Clientes

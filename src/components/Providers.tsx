@@ -1,13 +1,14 @@
 'use client';
 
 import { SessionProvider, useSession } from 'next-auth/react';
-import { UIProvider } from '@/contexts/UIContext';
+import { UIProvider, useUI } from '@/contexts/UIContext';
 import { usePathname } from 'next/navigation';
 import Header from './Header';
 
 function AppWrapper({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const { density } = useUI();
   
   // Páginas que não devem ter header
   const publicPages = ['/login', '/register', '/'];
@@ -17,7 +18,7 @@ function AppWrapper({ children }: { children: React.ReactNode }) {
   const showHeader = status === 'authenticated' && !isPublicPage;
 
   return (
-    <div className="min-h-screen transition-colors duration-300">
+    <div className={`min-h-screen transition-colors duration-300 density-${density}`}>
       {showHeader && <Header />}
       <main>
         {children}
@@ -26,12 +27,18 @@ function AppWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+function AppContent({ children }: { children: React.ReactNode }) {
+  return (
+    <UIProvider>
+      <AppWrapper>{children}</AppWrapper>
+    </UIProvider>
+  );
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <UIProvider>
-        <AppWrapper>{children}</AppWrapper>
-      </UIProvider>
+      <AppContent>{children}</AppContent>
     </SessionProvider>
   );
 }

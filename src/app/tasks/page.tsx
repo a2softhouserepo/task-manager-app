@@ -46,7 +46,8 @@ const STATUS_OPTIONS = [
 export default function TasksPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { isCompact } = useUI();
+  const { density } = useUI();
+  const isCompact = density === 'compact';
   const [tasks, setTasks] = useState<Task[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -578,9 +579,9 @@ export default function TasksPage() {
 
   return (
     <div className="min-h-screen">
-      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${isCompact ? 'py-4' : 'py-8'}`}>
+      <div className="density-container density-py">
         {/* Header */}
-        <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between ${isCompact ? 'mb-3' : 'mb-6'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Tarefas

@@ -3,9 +3,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
+type Density = 'compact' | 'comfortable';
 
 interface UIContextType {
-  isCompact: boolean;
+  density: Density;
+  isFullWidth: boolean; // true quando density = 'comfortable' (100% viewport)
   toggleDensity: () => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -15,16 +17,22 @@ interface UIContextType {
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export function UIProvider({ children }: { children: ReactNode }) {
-  const [isCompact, setIsCompact] = useState<boolean>(false);
+  // 'compact' = container limitado, espaçamento menor
+  // 'comfortable' = 100% viewport, espaçamento maior
+  const [density, setDensity] = useState<Density>('compact');
   const [theme, setThemeState] = useState<Theme>('system');
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
+  const isFullWidth = density === 'comfortable';
+
   // Carrega preferências salvas
   useEffect(() => {
     setMounted(true);
-    const savedDensity = localStorage.getItem('ui-density');
-    if (savedDensity) setIsCompact(savedDensity === 'compact');
+    const savedDensity = localStorage.getItem('ui-density') as Density | null;
+    if (savedDensity && (savedDensity === 'compact' || savedDensity === 'comfortable')) {
+      setDensity(savedDensity);
+    }
     
     const savedTheme = localStorage.getItem('theme') as Theme | null;
     if (savedTheme) setThemeState(savedTheme);
@@ -67,9 +75,9 @@ export function UIProvider({ children }: { children: ReactNode }) {
   }, [theme, mounted]);
 
   const toggleDensity = () => {
-    const newDensity = !isCompact;
-    setIsCompact(newDensity);
-    localStorage.setItem('ui-density', newDensity ? 'compact' : 'comfortable');
+    const newDensity: Density = density === 'compact' ? 'comfortable' : 'compact';
+    setDensity(newDensity);
+    localStorage.setItem('ui-density', newDensity);
   };
 
   const setTheme = (newTheme: Theme) => {
@@ -77,7 +85,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UIContext.Provider value={{ isCompact, toggleDensity, theme, setTheme, resolvedTheme }}>
+    <UIContext.Provider value={{ density, isFullWidth, toggleDensity, theme, setTheme, resolvedTheme }}>
       {children}
     </UIContext.Provider>
   );
