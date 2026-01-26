@@ -9,8 +9,7 @@ export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const { density, isFullWidth, toggleDensity, theme, setTheme } = useUI();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { density, isFullWidth, toggleDensity, theme, setTheme, toggleMobileMenu, isMobile, isTablet } = useUI();
   const [mounted, setMounted] = useState(false);
   
   const userRole = (session?.user as any)?.role || 'user';
@@ -58,35 +57,54 @@ export default function Header() {
     return 'Tema Sistema';
   };
 
+  // Mostrar botão hamburger apenas em mobile/tablet
+  const showMobileMenu = isMobile || isTablet;
+
   return (
-    <nav className="bg-white/80 dark:bg-black/80 backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-zinc-800 sticky top-0 z-50">
+    <nav className="bg-white/80 dark:bg-black/80 backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-zinc-800 sticky top-0 z-40 safe-area-top">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo e Nome */}
-          <button
-            onClick={() => !isDashboard && router.push('/dashboard')}
-            className={`flex items-center gap-3 min-w-0 ${!isDashboard ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
-            disabled={isDashboard}
-          >
-            <div className="w-10 h-10 rounded-lg bg-linear-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Task Manager
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Gestão de Serviços
-              </p>
-            </div>
-          </button>
+        <div className="flex justify-between items-center h-14 sm:h-16">
+          
+          {/* Lado Esquerdo: Hamburguer + Logo */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Botão Hamburger - Mobile/Tablet */}
+            {showMobileMenu && (
+              <button
+                onClick={toggleMobileMenu}
+                className="p-2 -ml-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-zinc-800 transition-all"
+                aria-label="Abrir menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
 
-          {/* Ações e Perfil */}
-          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Logo e Nome */}
+            <button
+              onClick={() => !isDashboard && router.push('/dashboard')}
+              className={`flex items-center gap-2 sm:gap-3 min-w-0 ${!isDashboard ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
+              disabled={isDashboard}
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md flex-shrink-0">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                  Task Manager
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Gestão de Serviços
+                </p>
+              </div>
+            </button>
+          </div>
 
-            {/* Botão Dashboard - Disponível para todos */}
+          {/* Navegação Desktop - Hidden no Mobile */}
+          <div className="hidden lg:flex items-center gap-1 sm:gap-2">
+            {/* Botão Dashboard */}
             <button
               onClick={() => router.push('/dashboard')}
               className={`p-2 rounded-lg transition-all
@@ -101,7 +119,7 @@ export default function Header() {
               </svg>
             </button>
 
-            {/* Botão Tarefas - Disponível para todos */}
+            {/* Botão Tarefas */}
             <button
               onClick={() => router.push('/tasks')}
               className={`p-2 rounded-lg transition-all
@@ -115,7 +133,7 @@ export default function Header() {
               </svg>
             </button>
 
-            {/* Botão Categorias - Disponível para todos */}
+            {/* Botão Categorias */}
             <button
               onClick={() => router.push('/categories')}
               className={`p-2 rounded-lg transition-all
@@ -129,7 +147,7 @@ export default function Header() {
               </svg>
             </button>
 
-            {/* Botão Clientes - Disponível para todos */}
+            {/* Botão Clientes */}
             <button
               onClick={() => router.push('/clients')}
               className={`p-2 rounded-lg transition-all
@@ -189,11 +207,14 @@ export default function Header() {
                 </button>
               </>
             )}
+          </div>
 
-            {/* Botão Densidade */}
+          {/* Ações e Perfil */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Botão Densidade - Hidden em Mobile (disponível no menu mobile) */}
             <button
               onClick={toggleDensity}
-              className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-zinc-800 transition-all"
+              className="hidden sm:flex p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-zinc-800 transition-all"
               title={isFullWidth ? 'Modo Compacto (container limitado)' : 'Modo Expandido (100% largura)'}
             >
               {isFullWidth ? (
@@ -207,21 +228,22 @@ export default function Header() {
               )}
             </button>
 
-            {/* Botão Tema */}
+            {/* Botão Tema - Hidden em Mobile (disponível no menu mobile) */}
             <button
               onClick={cycleTheme}
-              className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-zinc-800 transition-all"
+              className="hidden sm:flex p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-zinc-800 transition-all"
               title={getThemeLabel()}
             >
               {getThemeIcon()}
             </button>
 
-            {/* Divisor */}
-            <div className="h-8 w-px bg-stone-200 dark:bg-zinc-800"></div>
+            {/* Divisor - Hidden em Mobile */}
+            <div className="hidden sm:block h-8 w-px bg-stone-200 dark:bg-zinc-800 mx-1"></div>
 
             {/* Perfil do Usuário */}
-            <div className="flex items-center gap-3">
-              <div className="hidden md:block text-right">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Nome e Role - Hidden em Mobile/Tablet */}
+              <div className="hidden lg:block text-right">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                   {session?.user?.name}
                 </p>
@@ -231,14 +253,14 @@ export default function Header() {
               </div>
               
               {/* Avatar */}
-              <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
                 {session?.user?.name?.charAt(0).toUpperCase()}
               </div>
 
-              {/* Botão Sair */}
+              {/* Botão Sair - Hidden em Mobile (disponível no menu mobile) */}
               <button
                 onClick={() => signOut({ callbackUrl: '/login' })}
-                className="p-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-all"
+                className="hidden sm:flex p-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-all"
                 title="Sair"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
