@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
         // Registrar alteração no log de auditoria
         await logAudit({
           action: 'UPDATE',
-          resource: 'SYSTEM_CONFIG' as any,
+          resource: 'SYSTEM_CONFIG',
           resourceId: key,
           userId,
           userName,

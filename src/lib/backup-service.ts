@@ -5,6 +5,7 @@ import Category from '@/models/Category';
 import User from '@/models/User';
 import Backup from '@/models/Backup';
 import { logAudit } from '@/lib/audit';
+import { getConfig } from '@/models/SystemConfig';
 
 /**
  * Cria um backup completo do sistema
@@ -59,7 +60,7 @@ export async function createBackup(userId: string, type: 'AUTO' | 'MANUAL' = 'MA
   try {
     await logAudit({
       action: 'CREATE',
-      resource: 'BACKUP' as any,
+      resource: 'BACKUP',
       resourceId: backup._id.toString(),
       userId: userId === 'SYSTEM' ? 'system' : userId,
       userName: userId === 'SYSTEM' ? 'Sistema (Auto)' : undefined,
@@ -76,6 +77,7 @@ export async function createBackup(userId: string, type: 'AUTO' | 'MANUAL' = 'MA
 
 /**
  * Verifica se já existe um backup automático do dia e cria um se não existir
+ * Também executa limpeza de backups antigos após criação bem-sucedida
  * @param frequency - 'daily' verifica últimas 24h, 'every_login' sempre cria novo backup, 'disabled' não faz backup
  */
 export async function checkAndTriggerAutoBackup(frequency: 'daily' | 'every_login' | 'disabled' = 'daily'): Promise<boolean> {
@@ -86,42 +88,58 @@ export async function checkAndTriggerAutoBackup(frequency: 'daily' | 'every_logi
     return false;
   }
   
+  let backupCreated = false;
+  
   if (frequency === 'every_login') {
     console.log('🔄 Modo "todo login": criando backup automático...');
     try {
       await createBackup('SYSTEM', 'AUTO');
       console.log('✅ Backup automático criado com sucesso.');
-      return true;
-    } catch (error) {
-      console.error('❌ Falha ao criar backup automático:', error);
-      return false;
-    }
-  }
-  
-  // Modo 'daily': verifica últimas 24h
-  const twentyFourHoursAgo = new Date();
-  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
-
-  // Verifica se já existe um backup AUTO criado nas últimas 24h
-  const existingBackup = await Backup.findOne({
-    type: 'AUTO',
-    createdAt: { $gte: twentyFourHoursAgo }
-  });
-
-  if (!existingBackup) {
-    console.log('🔄 Disparando backup automático (últimas 24h)...');
-    try {
-      await createBackup('SYSTEM', 'AUTO');
-      console.log('✅ Backup automático criado com sucesso.');
-      return true;
+      backupCreated = true;
     } catch (error) {
       console.error('❌ Falha ao criar backup automático:', error);
       return false;
     }
   } else {
-    console.log('ℹ️ Backup automático já existe (criado há menos de 24h):', existingBackup.filename);
-    return false;
+    // Modo 'daily': verifica últimas 24h
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    // Verifica se já existe um backup AUTO criado nas últimas 24h
+    const existingBackup = await Backup.findOne({
+      type: 'AUTO',
+      createdAt: { $gte: twentyFourHoursAgo }
+    });
+
+    if (!existingBackup) {
+      console.log('🔄 Disparando backup automático (últimas 24h)...');
+      try {
+        await createBackup('SYSTEM', 'AUTO');
+        console.log('✅ Backup automático criado com sucesso.');
+        backupCreated = true;
+      } catch (error) {
+        console.error('❌ Falha ao criar backup automático:', error);
+        return false;
+      }
+    } else {
+      console.log('ℹ️ Backup automático já existe (criado há menos de 24h):', existingBackup.filename);
+    }
   }
+  
+  // Executar limpeza após backup (independente se criou ou não)
+  try {
+    console.log('🧹 Executando limpeza de backups antigos...');
+    const cleanupResult = await cleanupOldBackups();
+    const maxResult = await enforceMaxBackups();
+    
+    if (cleanupResult.removed > 0 || maxResult.removed > 0) {
+      console.log(`🗑️ Limpeza concluída: ${cleanupResult.removed + maxResult.removed} backups removidos`);
+    }
+  } catch (cleanupError) {
+    console.error('⚠️ Erro na limpeza de backups (não crítico):', cleanupError);
+  }
+  
+  return backupCreated;
 }
 
 /**
@@ -162,7 +180,7 @@ export async function restoreBackup(backupId: string, adminUserId: string) {
   try {
     await logAudit({
       action: 'UPDATE',
-      resource: 'BACKUP' as any,
+      resource: 'BACKUP',
       resourceId: backup._id.toString(),
       userId: adminUserId,
       details: { 
@@ -212,7 +230,7 @@ export async function clearAllData(adminUserId: string) {
   try {
     await logAudit({
       action: 'DELETE',
-      resource: 'BACKUP' as any,
+      resource: 'BACKUP',
       userId: adminUserId,
       details: { 
         action: 'CLEAR_ALL_DATA',
@@ -250,3 +268,148 @@ function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+/**
+ * Remove backups automáticos antigos baseado na configuração backup_retention_days
+ * @returns Número de backups removidos e erros encontrados
+ */
+export async function cleanupOldBackups(): Promise<{ removed: number; errors: string[] }> {
+  const results = { removed: 0, errors: [] as string[] };
+  
+  try {
+    await dbConnect();
+    
+    const retentionDays = await getConfig<number>('backup_retention_days', 30);
+    
+    // Se retenção for 0, nunca remover
+    if (retentionDays <= 0) {
+      console.log('⏭️ Limpeza de backups desabilitada (retenção = 0)');
+      return results;
+    }
+    
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+    
+    // Buscar backups AUTO mais antigos que a data de corte
+    const oldBackups = await Backup.find({
+      type: 'AUTO',
+      createdAt: { $lt: cutoffDate }
+    });
+    
+    if (oldBackups.length === 0) {
+      console.log(`ℹ️ Nenhum backup antigo para remover (retenção: ${retentionDays} dias)`);
+      return results;
+    }
+    
+    for (const backup of oldBackups) {
+      try {
+        await Backup.findByIdAndDelete(backup._id);
+        results.removed++;
+        console.log(`  🗑️ Removido: ${backup.filename}`);
+      } catch (err: any) {
+        const errorMsg = `Erro ao remover backup ${backup._id}: ${err.message}`;
+        results.errors.push(errorMsg);
+        console.error(`  ❌ ${errorMsg}`);
+      }
+    }
+    
+    console.log(`✅ Limpeza de backups: ${results.removed} removidos (retenção: ${retentionDays} dias)`);
+    
+    // Log de auditoria da limpeza
+    if (results.removed > 0) {
+      try {
+        await logAudit({
+          action: 'DELETE',
+          resource: 'BACKUP',
+          userId: 'SYSTEM',
+          userName: 'Sistema (Auto)',
+          details: {
+            action: 'CLEANUP_OLD_BACKUPS',
+            removedCount: results.removed,
+            retentionDays,
+            cutoffDate: cutoffDate.toISOString()
+          }
+        });
+      } catch (e) {
+        console.error('Erro ao criar log de auditoria da limpeza:', e);
+      }
+    }
+    
+  } catch (err: any) {
+    const errorMsg = `Erro geral na limpeza: ${err.message}`;
+    results.errors.push(errorMsg);
+    console.error(`❌ ${errorMsg}`);
+  }
+  
+  return results;
+}
+
+/**
+ * Remove backups excedentes quando ultrapassar o limite max_backups
+ * @returns Número de backups removidos e erros encontrados
+ */
+export async function enforceMaxBackups(): Promise<{ removed: number; errors: string[] }> {
+  const results = { removed: 0, errors: [] as string[] };
+  
+  try {
+    await dbConnect();
+    
+    const maxBackups = await getConfig<number>('max_backups', 50);
+    
+    // Se max_backups for 0, sem limite
+    if (maxBackups <= 0) {
+      console.log('⏭️ Limite de backups desabilitado (max = 0)');
+      return results;
+    }
+    
+    const totalBackups = await Backup.countDocuments({});
+    
+    if (totalBackups <= maxBackups) {
+      return results;
+    }
+    
+    const toRemove = totalBackups - maxBackups;
+    
+    // Buscar os backups AUTO mais antigos para remover (preservar manuais)
+    const oldestBackups = await Backup.find({ type: 'AUTO' })
+      .sort({ createdAt: 1 })
+      .limit(toRemove);
+    
+    for (const backup of oldestBackups) {
+      try {
+        await Backup.findByIdAndDelete(backup._id);
+        results.removed++;
+        console.log(`  🗑️ Removido (limite): ${backup.filename}`);
+      } catch (err: any) {
+        results.errors.push(`Erro ao remover backup ${backup._id}: ${err.message}`);
+      }
+    }
+    
+    if (results.removed > 0) {
+      console.log(`✅ Limite de backups: ${results.removed} removidos (max: ${maxBackups})`);
+      
+      try {
+        await logAudit({
+          action: 'DELETE',
+          resource: 'BACKUP',
+          userId: 'SYSTEM',
+          userName: 'Sistema (Auto)',
+          details: {
+            action: 'ENFORCE_MAX_BACKUPS',
+            removedCount: results.removed,
+            maxBackups,
+            totalBefore: totalBackups
+          }
+        });
+      } catch (e) {
+        console.error('Erro ao criar log de auditoria:', e);
+      }
+    }
+    
+  } catch (err: any) {
+    results.errors.push(`Erro geral: ${err.message}`);
+  }
+  
+  return results;
+}
+

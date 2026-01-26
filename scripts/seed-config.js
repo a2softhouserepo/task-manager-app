@@ -98,6 +98,15 @@ const defaultConfigs = [
   
   // Security Settings
   {
+    key: 'max_login_attempts',
+    value: 5,
+    type: 'number',
+    category: 'security',
+    label: 'Máximo de Tentativas de Login',
+    description: 'Número máximo de tentativas de login antes de bloquear por 15 minutos',
+    updatedBy: 'SYSTEM',
+  },
+  {
     key: 'audit_log_retention_days',
     value: 90,
     type: 'number',
@@ -112,7 +121,16 @@ const defaultConfigs = [
     type: 'number',
     category: 'security',
     label: 'Timeout de Sessão (horas)',
-    description: 'Tempo máximo de duração da sessão do usuário',
+    description: 'Tempo máximo de duração da sessão do usuário antes de expirar',
+    updatedBy: 'SYSTEM',
+  },
+  {
+    key: 'maintenance_mode',
+    value: false,
+    type: 'boolean',
+    category: 'security',
+    label: 'Modo Manutenção',
+    description: 'Quando ativo, apenas rootAdmin pode acessar o sistema',
     updatedBy: 'SYSTEM',
   },
   

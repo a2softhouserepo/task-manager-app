@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     try {
       await logAudit({
         action: 'CREATE',
-        resource: 'BACKUP' as any,
+        resource: 'BACKUP',
         resourceId: backup._id.toString(),
         userId: (session.user as any).id,
         details: { 

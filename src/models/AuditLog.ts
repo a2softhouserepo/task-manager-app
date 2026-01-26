@@ -15,7 +15,7 @@ export type AuditAction =
   | 'BACKUP_RESTORE'
   | 'IMPORT';
 
-export type AuditResource = 'TASK' | 'USER' | 'CLIENT' | 'CATEGORY' | 'AUDIT_LOG' | 'BACKUP' | 'SYSTEM';
+export type AuditResource = 'TASK' | 'USER' | 'CLIENT' | 'CATEGORY' | 'AUDIT_LOG' | 'BACKUP' | 'SYSTEM' | 'SYSTEM_CONFIG';
 
 export type AuditSeverity = 'INFO' | 'WARN' | 'CRITICAL';
 
@@ -62,7 +62,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
     resource: {
       type: String,
       required: true,
-      enum: ['TASK', 'USER', 'CLIENT', 'CATEGORY', 'AUDIT_LOG', 'BACKUP', 'SYSTEM'],
+      enum: ['TASK', 'USER', 'CLIENT', 'CATEGORY', 'AUDIT_LOG', 'BACKUP', 'SYSTEM', 'SYSTEM_CONFIG'],
       index: true,
     },
     resourceId: {

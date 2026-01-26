@@ -60,7 +60,7 @@ export async function DELETE(
     try {
       await logAudit({
         action: 'DELETE',
-        resource: 'BACKUP' as any,
+        resource: 'BACKUP',
         resourceId: id,
         userId: (session.user as any).id,
         details: { filename: backup.filename }

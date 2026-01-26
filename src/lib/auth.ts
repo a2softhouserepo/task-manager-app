@@ -6,6 +6,8 @@ import User from '@/models/User';
 import { rateLimit } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { getCookieNames } from '@/lib/cookie-config';
+import { getConfig } from '@/models/SystemConfig';
+import { recordLoginAttempt, isLoginBlocked, clearLoginAttempts } from '@/models/LoginAttempt';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -20,9 +22,33 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Por favor, forneça usuário e senha');
         }
 
-        // Rate limiting by username
+        await dbConnect();
+
+        // Obter IP do request
+        const forwarded = req?.headers?.['x-forwarded-for'];
+        const ipAddress = typeof forwarded === 'string' 
+          ? forwarded.split(',')[0]?.trim() 
+          : (req?.headers?.['x-real-ip'] as string) || 'unknown';
+        const userAgent = req?.headers?.['user-agent'] || 'unknown';
+
+        // Buscar max_login_attempts da configuração do sistema
+        let maxAttempts = 5;
+        try {
+          maxAttempts = await getConfig<number>('max_login_attempts', 5);
+        } catch {
+          // Usar padrão se falhar
+        }
+
+        // Verificar se está bloqueado por tentativas no banco de dados
+        const blockCheck = await isLoginBlocked(credentials.username, ipAddress, maxAttempts);
+        
+        if (blockCheck.blocked) {
+          throw new Error(`Muitas tentativas de login. Tente novamente em ${blockCheck.minutesUntilReset} minutos.`);
+        }
+
+        // Rate limiting adicional em memória (backup)
         const rateLimitResult = rateLimit(`login:${credentials.username}`, {
-          maxAttempts: 5,
+          maxAttempts: maxAttempts,
           windowMs: 15 * 60 * 1000, // 15 minutes
         });
 
@@ -31,11 +57,12 @@ export const authOptions: NextAuthOptions = {
           throw new Error(`Muitas tentativas de login. Tente novamente em ${resetMinutes} minutos.`);
         }
 
-        await dbConnect();
-
         const user = await User.findOne({ username: credentials.username });
 
         if (!user) {
+          // Registrar tentativa falha
+          await recordLoginAttempt(credentials.username, ipAddress, false, userAgent);
+          
           // Log failed login attempt
           await logAudit({
             action: 'LOGIN_FAILED',
@@ -46,9 +73,12 @@ export const authOptions: NextAuthOptions = {
             details: {
               reason: 'User not found',
               username: credentials.username,
+              remainingAttempts: blockCheck.remainingAttempts - 1,
             },
           });
-          throw new Error('Usuário ou senha incorretos');
+          
+          const remaining = blockCheck.remainingAttempts - 1;
+          throw new Error(`Usuário ou senha incorretos.${remaining > 0 ? ` ${remaining} tentativas restantes.` : ''}`);
         }
 
         const isPasswordValid = await bcrypt.compare(
@@ -57,6 +87,9 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isPasswordValid) {
+          // Registrar tentativa falha
+          await recordLoginAttempt(credentials.username, ipAddress, false, userAgent);
+          
           // Log failed login attempt
           await logAudit({
             action: 'LOGIN_FAILED',
@@ -67,10 +100,17 @@ export const authOptions: NextAuthOptions = {
             details: {
               reason: 'Invalid password',
               username: credentials.username,
+              remainingAttempts: blockCheck.remainingAttempts - 1,
             },
           });
-          throw new Error('Usuário ou senha incorretos');
+          
+          const remaining = blockCheck.remainingAttempts - 1;
+          throw new Error(`Usuário ou senha incorretos.${remaining > 0 ? ` ${remaining} tentativas restantes.` : ''}`);
         }
+
+        // Login bem-sucedido - limpar tentativas anteriores
+        await clearLoginAttempts(credentials.username, ipAddress);
+        await recordLoginAttempt(credentials.username, ipAddress, true, userAgent);
 
         // Log successful login
         await logAudit({
@@ -121,10 +161,25 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = (user as any).role;
         token.username = (user as any).username;
+        token.loginTime = Date.now(); // Registrar momento do login para timeout
       }
       return token;
     },
     async session({ session, token }) {
+      // Verificar se sessão expirou baseado na configuração
+      try {
+        const timeoutHours = await getConfig<number>('session_timeout_hours', 24);
+        const timeoutMs = timeoutHours * 60 * 60 * 1000;
+        const loginTime = (token as any).loginTime || Date.now();
+        
+        if (Date.now() - loginTime > timeoutMs) {
+          // Marcar sessão como expirada - será tratado no cliente
+          (session as any).expired = true;
+        }
+      } catch (err) {
+        console.error('Erro ao verificar timeout de sessão:', err);
+      }
+      
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
