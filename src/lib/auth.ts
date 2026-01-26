@@ -87,11 +87,17 @@ export const authOptions: NextAuthOptions = {
 
         // Executar backup automático de forma síncrona se for rootAdmin
         if (user.role === 'rootAdmin') {
-          const backupFrequency = (process.env.BACKUP_FREQUENCY || 'daily') as 'daily' | 'every_login' | 'disabled';
-          console.log(`🔧 Backup automático configurado como: ${backupFrequency}`);
-          
           try {
             const { checkAndTriggerAutoBackup } = await import('@/lib/backup-service');
+            const { getConfig } = await import('@/models/SystemConfig');
+            
+            // Buscar frequência do banco de dados, fallback para .env
+            const backupFrequency = await getConfig<'daily' | 'every_login' | 'disabled'>(
+              'backup_frequency',
+              (process.env.BACKUP_FREQUENCY_FALLBACK || 'daily') as 'daily' | 'every_login' | 'disabled'
+            );
+            
+            console.log(`🔧 Backup automático configurado como: ${backupFrequency}`);
             await checkAndTriggerAutoBackup(backupFrequency);
           } catch (backupError) {
             console.error('❌ Erro ao executar backup automático:', backupError);
