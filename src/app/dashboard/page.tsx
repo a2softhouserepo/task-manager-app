@@ -658,11 +658,11 @@ export default function DashboardPage() {
 
       {/* Filtros e Listagem */}
       <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h3 className="text-lg font-semibold text-foreground whitespace-nowrap">
             Tarefas do Período
           </h3>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 w-full sm:w-auto justify-start sm:justify-end">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"

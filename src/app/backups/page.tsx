@@ -246,7 +246,7 @@ export default function BackupsPage() {
   return (
     <div className="density-container density-py">
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 density-header-mb">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
@@ -261,7 +261,7 @@ export default function BackupsPage() {
           </p>
         </div>
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {/* Botão Upload */}
           <input
             type="file"

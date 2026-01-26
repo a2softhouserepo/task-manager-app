@@ -151,7 +151,7 @@ export default function CategoriesPage() {
   return (
     <div className="density-container density-py">
       {/* Header */}
-        <div className="flex items-center justify-between density-header-mb">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Categorias
@@ -162,7 +162,7 @@ export default function CategoriesPage() {
           </div>
           <button
             onClick={openNewModal}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

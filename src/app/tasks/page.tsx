@@ -614,11 +614,11 @@ export default function TasksPage() {
 
         {/* Filtros */}
         <div className={`card-soft ${isCompact ? 'p-3 mb-3' : 'p-6 mb-6'}`}>
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-lg font-semibold text-foreground whitespace-nowrap">
               Tarefas do Período
             </h3>
-            <div className="flex items-center gap-3 flex-1 justify-end overflow-x-auto">
+            <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1 justify-start sm:justify-end overflow-x-auto pb-2 sm:pb-0">
               <label className="flex items-center gap-2 whitespace-nowrap">
                 <input
                   type="checkbox"
