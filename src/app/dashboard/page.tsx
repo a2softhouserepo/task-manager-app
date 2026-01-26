@@ -662,7 +662,7 @@ export default function DashboardPage() {
           <h3 className="text-lg font-semibold text-foreground whitespace-nowrap">
             Tarefas do Período
           </h3>
-          <div className="flex flex-wrap gap-3 w-full sm:w-auto justify-start sm:justify-end">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 w-full sm:w-auto justify-start sm:justify-end">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -679,13 +679,13 @@ export default function DashboardPage() {
                   type="date"
                   value={filterStartDate}
                   onChange={(e) => setFilterStartDate(e.target.value)}
-                  className="input-soft !w-auto"
+                  className="input-soft w-full sm:w-auto"
                 />
                 <input
                   type="date"
                   value={filterEndDate}
                   onChange={(e) => setFilterEndDate(e.target.value)}
-                  className="input-soft !w-auto"
+                  className="input-soft w-full sm:w-auto"
                 />
               </>
             ) : (
@@ -693,14 +693,14 @@ export default function DashboardPage() {
                 type="month"
                 value={filterMonth}
                 onChange={(e) => setFilterMonth(e.target.value)}
-                className="input-soft !w-auto"
+                className="input-soft w-full sm:w-auto"
               />
             )}
             
             <select
               value={filterClientId}
               onChange={(e) => setFilterClientId(e.target.value)}
-              className="input-soft !w-auto"
+              className="input-soft w-full sm:w-auto"
             >
               <option value="">Todos os clientes</option>
               {clients.map((c) => (
@@ -711,7 +711,7 @@ export default function DashboardPage() {
             <select
               value={filterCategoryId}
               onChange={(e) => setFilterCategoryId(e.target.value)}
-              className="input-soft !w-auto"
+              className="input-soft w-full sm:w-auto"
             >
               <option value="">Todas as categorias</option>
               {categories.map((c) => (
@@ -722,7 +722,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Totalizador */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4 mb-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4 my-4">
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">
               {tasks.length} tarefa(s) encontrada(s)

@@ -618,7 +618,7 @@ export default function TasksPage() {
             <h3 className="text-lg font-semibold text-foreground whitespace-nowrap">
               Tarefas do Período
             </h3>
-            <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1 justify-start sm:justify-end overflow-x-auto pb-2 sm:pb-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto sm:flex-1 justify-start sm:justify-end">
               <label className="flex items-center gap-2 whitespace-nowrap">
                 <input
                   type="checkbox"
@@ -635,14 +635,14 @@ export default function TasksPage() {
                     type="date"
                     value={filterStartDate}
                     onChange={(e) => setFilterStartDate(e.target.value)}
-                    className="input-soft w-auto"
+                    className="input-soft w-full sm:w-auto"
                     placeholder="Data início"
                   />
                   <input
                     type="date"
                     value={filterEndDate}
                     onChange={(e) => setFilterEndDate(e.target.value)}
-                    className="input-soft w-auto"
+                    className="input-soft w-full sm:w-auto"
                     placeholder="Data fim"
                   />
                 </>
@@ -651,14 +651,14 @@ export default function TasksPage() {
                   type="month"
                   value={filterMonth}
                   onChange={(e) => setFilterMonth(e.target.value)}
-                  className="input-soft w-auto"
+                  className="input-soft w-full sm:w-auto"
                 />
               )}
               
               <select
                 value={filterClientId}
                 onChange={(e) => setFilterClientId(e.target.value)}
-                className="input-soft w-auto min-w-[150px]"
+                className="input-soft w-full sm:w-auto min-w-[150px]"
               >
                 <option value="">Todos os clientes</option>
                 {clients.map((c) => (
@@ -669,7 +669,7 @@ export default function TasksPage() {
               <select
                 value={filterCategoryId}
                 onChange={(e) => setFilterCategoryId(e.target.value)}
-                className="input-soft w-auto min-w-[180px]"
+                className="input-soft w-full sm:w-auto min-w-[180px]"
               >
                 <option value="">Todas as categorias</option>
                 {categories.map((c) => (
@@ -680,7 +680,7 @@ export default function TasksPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="input-soft w-auto min-w-[140px]"
+                className="input-soft w-full sm:w-auto min-w-[140px]"
               >
                 <option value="">Todos os status</option>
                 {STATUS_OPTIONS.map((s) => (
