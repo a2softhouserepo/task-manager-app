@@ -12,6 +12,8 @@ interface Task {
   requestDate: string;
   clientId: string;
   clientName: string;
+  rootClientName?: string;
+  subClientLevels?: string[];
   categoryId: string;
   categoryName: string;
   title: string;
@@ -28,6 +30,10 @@ interface Task {
 interface Client {
   _id: string;
   name: string;
+  parentId?: string | null;
+  path?: string[];
+  depth?: number;
+  children?: Client[];
 }
 
 interface Category {
@@ -50,6 +56,7 @@ export default function TasksPage() {
   const isCompact = density === 'compact';
   const [tasks, setTasks] = useState<Task[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientsTree, setClientsTree] = useState<Client[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -58,6 +65,7 @@ export default function TasksPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [maxSubClientLevels, setMaxSubClientLevels] = useState(0);
   
   // Ordenação
   const [sortColumn, setSortColumn] = useState<'requestDate' | 'clientName' | 'title' | 'cost'>('requestDate');
@@ -77,10 +85,10 @@ export default function TasksPage() {
   
   // PDF Export Modal
   const [showPdfModal, setShowPdfModal] = useState(false);
-  const [pdfColumns, setPdfColumns] = useState({
+  const [pdfColumns, setPdfColumns] = useState<{[key: string]: boolean}>({
     requestDate: true,
     categoryName: true,
-    clientName: true,
+    rootClientName: true,
     title: true,
     description: true,
     deliveryDate: true,
@@ -133,17 +141,20 @@ export default function TasksPage() {
 
   const loadData = async () => {
     try {
-      const [clientsRes, categoriesRes] = await Promise.all([
+      const [clientsRes, clientsTreeRes, categoriesRes] = await Promise.all([
         fetch('/api/clients?active=true'),
+        fetch('/api/clients?active=true&tree=true'),
         fetch('/api/categories?active=true'),
       ]);
       
-      const [clientsData, categoriesData] = await Promise.all([
+      const [clientsData, clientsTreeData, categoriesData] = await Promise.all([
         clientsRes.json(),
+        clientsTreeRes.json(),
         categoriesRes.json(),
       ]);
       
       setClients(clientsData.clients || []);
+      setClientsTree(clientsTreeData.clients || []);
       setCategories(categoriesData.categories || []);
       
       await loadTasks();
@@ -171,7 +182,15 @@ export default function TasksPage() {
       
       const res = await fetch(`/api/tasks?${params.toString()}`);
       const data = await res.json();
-      setTasks(data.tasks || []);
+      const tasksData = data.tasks || [];
+      setTasks(tasksData);
+      
+      // Calcular número máximo de níveis de subclientes
+      const maxLevels = tasksData.reduce((max: number, task: Task) => {
+        const levels = task.subClientLevels?.length || 0;
+        return Math.max(max, levels);
+      }, 0);
+      setMaxSubClientLevels(maxLevels);
     } catch (error) {
       console.error('Error loading tasks:', error);
     }
@@ -219,6 +238,26 @@ export default function TasksPage() {
       setSortColumn(column);
       setSortDirection('asc');
     }
+  };
+
+  // Função para construir opções hierárquicas de clientes
+  const buildClientOptions = (clientList: Client[], level: number = 0): React.ReactElement[] => {
+    const options: React.ReactElement[] = [];
+    
+    clientList.forEach(client => {
+      const prefix = '—'.repeat(level);
+      options.push(
+        <option key={client._id} value={client._id}>
+          {prefix}{prefix ? ' ' : ''}{client.name}
+        </option>
+      );
+      
+      if (client.children && client.children.length > 0) {
+        options.push(...buildClientOptions(client.children, level + 1));
+      }
+    });
+    
+    return options;
   };
 
   // Função para renderizar ícone de ordenação
@@ -383,17 +422,25 @@ export default function TasksPage() {
   };
 
   const openPdfModal = () => {
-    setPdfColumns({
+    // Preparar colunas base
+    const baseColumns: {[key: string]: boolean} = {
       requestDate: true,
       categoryName: true,
-      clientName: true,
+      rootClientName: true,
       title: true,
       description: true,
       deliveryDate: true,
       cost: true,
       status: true,
       observations: true,
-    });
+    };
+    
+    // Adicionar colunas de subcliente dinamicamente
+    for (let i = 0; i < maxSubClientLevels; i++) {
+      baseColumns[`subClient${i}`] = true;
+    }
+    
+    setPdfColumns(baseColumns);
     setPdfHeaderText('');
     setPdfFooterText('');
     setPdfStartDate(filterStartDate);
@@ -479,73 +526,125 @@ export default function TasksPage() {
       doc.text(`Total: ${formatCurrency(total)} (${pdfTasks.length} tarefas)`, 14, currentY);
       currentY += 6;
       
+      // Calcular max níveis de subclientes nos dados filtrados
+      const pdfMaxSubClientLevels = pdfTasks.reduce((max: number, task: Task) => {
+        return Math.max(max, task.subClientLevels?.length || 0);
+      }, 0);
+      
       // Montar colunas selecionadas
       const columnMapping: { [key: string]: { label: string; width: number } } = {
-        requestDate: { label: 'Data Sol.', width: 22 },
+        requestDate: { label: 'Data', width: 22 },
         categoryName: { label: 'Categoria', width: 25 },
-        clientName: { label: 'Cliente', width: 30 },
+        rootClientName: { label: 'Cliente', width: 30 },
         title: { label: 'Título', width: 35 },
         description: { label: 'Descrição', width: 50 },
         deliveryDate: { label: 'Entrega', width: 22 },
         cost: { label: 'Custo', width: 22 },
         status: { label: 'Status', width: 22 },
-        observations: { label: 'Observações', width: 40 },
+        observations: { label: 'Obs.', width: 40 },
       };
+      
+      // Adicionar colunas dinâmicas de subcliente sem texto no header
+      for (let i = 0; i < pdfMaxSubClientLevels; i++) {
+        columnMapping[`subClient${i}`] = { label: '', width: 30 };
+      }
       
       const selectedColumns = Object.entries(pdfColumns)
         .filter(([_, selected]) => selected)
-        .map(([key]) => key);
+        .map(([key]) => key)
+        .filter(key => {
+          // Filtrar colunas de subcliente que não existem no columnMapping
+          if (key.startsWith('subClient')) {
+            return columnMapping[key] !== undefined;
+          }
+          return columnMapping[key] !== undefined;
+        });
       
-      const headers = selectedColumns.map(col => columnMapping[col].label);
+      // Reordenar colunas: data, cliente, subclientes, depois o resto
+      let dataColumn: string[] = [];
+      const clientColumn: string[] = [];
+      const subClientColumns: string[] = [];
+      const otherColumns: string[] = [];
+      
+      selectedColumns.forEach(col => {
+        if (col === 'requestDate') {
+          dataColumn.push(col);
+        } else if (col === 'rootClientName') {
+          clientColumn.push(col);
+        } else if (col.startsWith('subClient')) {
+          subClientColumns.push(col);
+        } else {
+          otherColumns.push(col);
+        }
+      });
+      
+      // Ordenar subclientes por número
+      subClientColumns.sort((a, b) => {
+        const numA = parseInt(a.replace('subClient', ''));
+        const numB = parseInt(b.replace('subClient', ''));
+        return numA - numB;
+      });
+      
+      const finalColumns = [...dataColumn, ...clientColumn, ...subClientColumns, ...otherColumns];
+      const headers = finalColumns.map(col => columnMapping[col].label);
       
       const tableData = pdfTasks.map((task: Task) => {
         const row: string[] = [];
-        selectedColumns.forEach(col => {
-          switch(col) {
-            case 'requestDate':
-              row.push(formatDate(task.requestDate));
-              break;
-            case 'categoryName':
-              row.push(task.categoryName);
-              break;
-            case 'clientName':
-              row.push(task.clientName);
-              break;
-            case 'title':
-              row.push(task.title);
-              break;
-            case 'description':
-              row.push(task.description.substring(0, 60) + (task.description.length > 60 ? '...' : ''));
-              break;
-            case 'deliveryDate':
-              row.push(task.deliveryDate ? formatDate(task.deliveryDate) : '-');
-              break;
-            case 'cost':
-              row.push(formatCurrency(task.cost));
-              break;
-            case 'status':
-              row.push(getStatusBadge(task.status).label);
-              break;
-            case 'observations':
-              row.push(task.observations?.substring(0, 40) || '-');
-              break;
+        finalColumns.forEach(col => {
+          if (col.startsWith('subClient')) {
+            // Coluna dinâmica de subcliente
+            const level = parseInt(col.replace('subClient', ''));
+            row.push(task.subClientLevels?.[level] || '-');
+          } else {
+            switch(col) {
+              case 'requestDate':
+                row.push(formatDate(task.requestDate));
+                break;
+              case 'categoryName':
+                row.push(task.categoryName);
+                break;
+              case 'rootClientName':
+                row.push(task.rootClientName || task.clientName);
+                break;
+              case 'title':
+                row.push(task.title);
+                break;
+              case 'description':
+                row.push(task.description.substring(0, 60) + (task.description.length > 60 ? '...' : ''));
+                break;
+              case 'deliveryDate':
+                row.push(task.deliveryDate ? formatDate(task.deliveryDate) : '-');
+                break;
+              case 'cost':
+                row.push(formatCurrency(task.cost));
+                break;
+              case 'status':
+                row.push(getStatusBadge(task.status).label);
+                break;
+              case 'observations':
+                row.push(task.observations?.substring(0, 40) || '-');
+                break;
+            }
           }
         });
         return row;
-      });
-      
-      const columnStyles: any = {};
-      selectedColumns.forEach((col, idx) => {
-        columnStyles[idx] = { cellWidth: columnMapping[col].width };
       });
       
       autoTable(doc, {
         startY: currentY,
         head: [headers],
         body: tableData,
-        styles: { fontSize: 7 },
-        headStyles: { fillColor: [59, 130, 246] },
-        columnStyles,
+        styles: { 
+          fontSize: 6,
+          cellPadding: 1.5,
+          overflow: 'linebreak'
+        },
+        headStyles: { 
+          fillColor: [59, 130, 246],
+          fontSize: 6,
+          fontStyle: 'bold'
+        },
+        theme: 'grid'
       });
       
       // Rodapé personalizado
@@ -661,9 +760,7 @@ export default function TasksPage() {
                 className="input-soft w-full sm:w-auto min-w-[150px]"
               >
                 <option value="">Todos os clientes</option>
-                {clients.map((c) => (
-                  <option key={c._id} value={c._id}>{c.name}</option>
-                ))}
+                {buildClientOptions(clientsTree)}
               </select>
               
               <select
@@ -728,6 +825,11 @@ export default function TasksPage() {
                       {renderSortIcon('clientName')}
                     </button>
                   </th>
+                  {maxSubClientLevels > 0 && Array.from({ length: maxSubClientLevels }).map((_, i) => (
+                    <th key={`subclient-header-${i}`} className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
+                      SUBCLIENTE {i > 1 && i + 1}
+                    </th>
+                  ))}
                   <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                     <button
                       onClick={() => handleSort('title')}
@@ -762,11 +864,18 @@ export default function TasksPage() {
                     <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.categoryName}
                     </td>
-                    <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <div className="max-w-xs truncate" title={task.clientName}>
-                        {task.clientName.length > 15 ? `${task.clientName.substring(0, 15)}...` : task.clientName}
+                    <td className={`text-sm text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                      <div className="max-w-xs truncate" title={task.rootClientName || task.clientName}>
+                        {(task.rootClientName || task.clientName).length > 20 ? `${(task.rootClientName || task.clientName).substring(0, 20)}...` : (task.rootClientName || task.clientName)}
                       </div>
                     </td>
+                    {maxSubClientLevels > 0 && Array.from({ length: maxSubClientLevels }).map((_, i) => (
+                      <td key={`subclient-${task._id}-${i}`} className={`text-sm text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                        <div className="max-w-xs truncate" title={task.subClientLevels?.[i] || ''}>
+                          {task.subClientLevels?.[i] || '-'}
+                        </div>
+                      </td>
+                    ))}
                     <td className={`text-sm whitespace-nowrap font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <div className="max-w-xs truncate" title={task.title}>
                         {task.title.length > 35 ? `${task.title.substring(0, 35)}...` : task.title}
@@ -821,7 +930,7 @@ export default function TasksPage() {
                 ))}
                 {tasks.length === 0 && (
                   <tr>
-                    <td colSpan={8} className={`text-center text-muted-foreground ${isCompact ? 'px-3 py-8' : 'px-4 py-12'}`}>
+                    <td colSpan={8 + maxSubClientLevels} className={`text-center text-muted-foreground ${isCompact ? 'px-3 py-8' : 'px-4 py-12'}`}>
                       Nenhuma tarefa encontrada no período selecionado
                     </td>
                   </tr>
@@ -989,9 +1098,7 @@ export default function TasksPage() {
                   required
                 >
                   <option value="">Selecione...</option>
-                  {clients.map((c) => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
-                  ))}
+                  {buildClientOptions(clientsTree)}
                 </select>
               </div>
               <div>
@@ -1250,12 +1357,24 @@ export default function TasksPage() {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={pdfColumns.clientName}
-                    onChange={(e) => setPdfColumns({...pdfColumns, clientName: e.target.checked})}
+                    checked={pdfColumns.rootClientName}
+                    onChange={(e) => setPdfColumns({...pdfColumns, rootClientName: e.target.checked})}
                     className="rounded border-gray-300"
                   />
                   <span className="text-sm text-foreground">Cliente</span>
                 </label>
+                
+                {maxSubClientLevels > 0 && Array.from({ length: maxSubClientLevels }).map((_, i) => (
+                  <label key={`pdf-subclient-${i}`} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={pdfColumns[`subClient${i}`] !== false}
+                      onChange={(e) => setPdfColumns({...pdfColumns, [`subClient${i}`]: e.target.checked})}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm text-foreground">Subcliente {i >= 1 && i + 1}</span>
+                  </label>
+                ))}
                 
                 <label className="flex items-center gap-2">
                   <input

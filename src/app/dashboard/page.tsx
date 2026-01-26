@@ -26,6 +26,8 @@ interface Task {
   requestDate: string;
   clientId: string;
   clientName: string;
+  rootClientName?: string;
+  subClientLevels?: string[];
   categoryId: string;
   categoryName: string;
   categoryIcon?: string;
@@ -44,6 +46,10 @@ interface Client {
   phone?: string;
   email?: string;
   address?: string;
+  parentId?: string | null;
+  path?: string[];
+  depth?: number;
+  children?: Client[];
 }
 
 interface Category {
@@ -72,6 +78,7 @@ export default function DashboardPage() {
   const chartColors = getChartColors(resolvedTheme || 'light');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientsTree, setClientsTree] = useState<Client[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,19 +137,22 @@ export default function DashboardPage() {
 
   const loadData = async () => {
     try {
-      const [clientsRes, categoriesRes, statsRes] = await Promise.all([
+      const [clientsRes, clientsTreeRes, categoriesRes, statsRes] = await Promise.all([
         fetch('/api/clients?active=true'),
+        fetch('/api/clients?active=true&tree=true'),
         fetch('/api/categories?active=true'),
         fetch('/api/tasks/stats'),
       ]);
       
-      const [clientsData, categoriesData, statsData] = await Promise.all([
+      const [clientsData, clientsTreeData, categoriesData, statsData] = await Promise.all([
         clientsRes.json(),
+        clientsTreeRes.json(),
         categoriesRes.json(),
         statsRes.json(),
       ]);
       
       setClients(clientsData.clients || []);
+      setClientsTree(clientsTreeData.clients || []);
       setCategories(categoriesData.categories || []);
       setStats(statsData);
       
@@ -243,6 +253,26 @@ export default function DashboardPage() {
       setSortColumn(column);
       setSortDirection('asc');
     }
+  };
+
+  // Função para construir opções hierárquicas de clientes
+  const buildClientOptions = (clientList: Client[], level: number = 0): React.ReactElement[] => {
+    const options: React.ReactElement[] = [];
+    
+    clientList.forEach(client => {
+      const prefix = '—'.repeat(level);
+      options.push(
+        <option key={client._id} value={client._id}>
+          {prefix}{prefix ? ' ' : ''}{client.name}
+        </option>
+      );
+      
+      if (client.children && client.children.length > 0) {
+        options.push(...buildClientOptions(client.children, level + 1));
+      }
+    });
+    
+    return options;
   };
 
   const openEditModal = (task: Task) => {
@@ -688,9 +718,7 @@ export default function DashboardPage() {
               className="input-soft w-full sm:w-auto"
             >
               <option value="">Todos os clientes</option>
-              {clients.map((c) => (
-                <option key={c._id} value={c._id}>{c.name}</option>
-              ))}
+              {buildClientOptions(clientsTree)}
             </select>
             
             <select
@@ -735,7 +763,6 @@ export default function DashboardPage() {
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>CATEGORIA</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>CLIENTE</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>TÍTULO</th>
-                <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>OBS.</th>
                 <th className={`px-4 text-right whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>AÇÕES</th>
               </tr>
             </thead>
@@ -758,18 +785,13 @@ export default function DashboardPage() {
                     </div>
                   </td>
                   <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <div className="max-w-xs truncate" title={task.clientName}>
-                      {task.clientName}
+                    <div className="max-w-xs truncate" title={task.rootClientName || task.clientName}>
+                      {task.rootClientName || task.clientName}
                     </div>
                   </td>
                   <td className={`px-4 text-sm font-medium text-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     <div className="max-w-xs truncate" title={task.title}>
                       {task.title}
-                    </div>
-                  </td>
-                  <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <div className="max-w-xs truncate" title={task.observations || ''}>
-                      {task.observations || '-'}
                     </div>
                   </td>
                   <td className={`px-4 whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
@@ -805,7 +827,7 @@ export default function DashboardPage() {
               ))}
               {tasks.length === 0 && (
                 <tr>
-                  <td colSpan={8} className={`px-4 text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
+                  <td colSpan={5} className={`px-4 text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
                     Nenhuma tarefa encontrada no período selecionado
                   </td>
                 </tr>
@@ -864,9 +886,7 @@ export default function DashboardPage() {
                 required
               >
                 <option value="">Selecione...</option>
-                {clients.map((c) => (
-                  <option key={c._id} value={c._id}>{c.name}</option>
-                ))}
+                {buildClientOptions(clientsTree)}
               </select>
             </div>
             <div>

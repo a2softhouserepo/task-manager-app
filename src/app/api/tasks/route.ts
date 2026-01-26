@@ -71,10 +71,78 @@ export async function GET(request: NextRequest) {
 
     const tasks = await Task.find(query).sort({ requestDate: -1 });
 
-    // Calcular totais
-    const total = tasks.reduce((sum, task) => sum + task.cost, 0);
+    // Buscar informações dos clientes para adicionar hierarquia completa
+    const clientIds = [...new Set(tasks.map(task => task.clientId))];
+    const allClients = await Client.find({ _id: { $in: clientIds } }).select('_id name parentId path rootClientId depth');
+    
+    // Criar um map de clientId -> client data
+    const clientMap = new Map(allClients.map(c => [c._id.toString(), c]));
+    
+    // Buscar todos os IDs únicos necessários (path + rootClientId)
+    const allNeededIds = new Set<string>();
+    allClients.forEach(client => {
+      if (client.path && client.path.length > 0) {
+        client.path.forEach((id: string) => allNeededIds.add(id));
+      }
+      if (client.rootClientId) {
+        allNeededIds.add(client.rootClientId.toString());
+      }
+    });
+    
+    // Buscar todos os clientes necessários
+    const allNeededClients = await Client.find({ _id: { $in: Array.from(allNeededIds) } }).select('_id name');
+    const clientNamesMap = new Map(allNeededClients.map(c => [c._id.toString(), c.name]));
+    
+    // Adicionar hierarquia completa a cada task
+    const tasksWithHierarchy = tasks.map(task => {
+      const taskObj = task.toObject();
+      const client = clientMap.get(task.clientId);
+      
+      if (!client) {
+        taskObj.rootClientName = task.clientName;
+        taskObj.subClientLevels = [];
+        return taskObj;
+      }
+      
+      // Se tem rootClientId, é um subcliente
+      if (client.rootClientId) {
+        const rootClientIdStr = client.rootClientId.toString();
+        const rootName = clientNamesMap.get(rootClientIdStr);
+        taskObj.rootClientName = rootName || task.clientName;
+        
+        // Construir array de subclientes por nível (excluindo o root)
+        const subClientLevels: string[] = [];
+        
+        // Adicionar cada nível do path (exceto o root client)
+        if (client.path && client.path.length > 0) {
+          client.path.forEach((pathId: string) => {
+            // Ignorar o root client no path
+            if (pathId !== rootClientIdStr) {
+              const pathClientName = clientNamesMap.get(pathId);
+              if (pathClientName) {
+                subClientLevels.push(pathClientName);
+              }
+            }
+          });
+        }
+        
+        // Adicionar o cliente atual
+        subClientLevels.push(client.name);
+        
+        taskObj.subClientLevels = subClientLevels;
+      } else {
+        // É um cliente raiz
+        taskObj.rootClientName = client.name;
+        taskObj.subClientLevels = [];
+      }
+      
+      return taskObj;
+    });
 
-    return NextResponse.json({ tasks, total, count: tasks.length });
+    // Calcular totais
+    const total = tasksWithHierarchy.reduce((sum, task) => sum + task.cost, 0);
+
+    return NextResponse.json({ tasks: tasksWithHierarchy, total, count: tasksWithHierarchy.length });
   } catch (error: any) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json(

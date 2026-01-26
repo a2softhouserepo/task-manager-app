@@ -8,6 +8,8 @@ export interface ITask {
   requestDate: Date; // Data de solicitação
   clientId: string;
   clientName?: string; // Denormalized for quick display
+  rootClientName?: string; // Nome do cliente raiz
+  subClientLevels?: string[]; // Array de subclientes por nível
   categoryId: string;
   categoryName?: string; // Denormalized for quick display
   categoryIcon?: string; // Denormalized icon
