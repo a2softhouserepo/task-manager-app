@@ -635,21 +635,6 @@ export default function DashboardPage() {
                     return [`${formatCurrency(value)} (${percent}%)`];
                   }}
                 />
-                <RechartsLegend 
-                  layout="vertical"
-                  align="right"
-                  verticalAlign="middle"
-                  iconType="circle"
-                  wrapperStyle={{ 
-                    paddingLeft: '20px',
-                    fontSize: '13px',
-                    color: chartColors.text
-                  }}
-                  formatter={(value: string) => {
-                    const displayValue = value.length > 15 ? value.substring(0, 15) + '...' : value;
-                    return <span style={{ color: chartColors.text }}>{displayValue}</span>;
-                  }}
-                />
               </PieChart>
             </ResponsiveContainer>
           </div>
