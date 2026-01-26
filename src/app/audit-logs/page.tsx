@@ -34,7 +34,7 @@ export default function AuditLogsPage() {
   const router = useRouter();
   const { density, isMobile, isTablet } = useUI();
   const isCompact = density === 'compact';
-  const showCards = isMobile || isTablet;
+  const showCards = isMobile || isTablet; // Cards em mobile e tablet até 1024px
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -146,7 +146,7 @@ export default function AuditLogsPage() {
         </div>
         
         {/* Filtros - Desktop sempre visível, Mobile colapsável */}
-        <div className={`filters-container ${showCards ? (showFilters ? 'flex' : 'hidden') : 'flex'} flex-col sm:flex-row gap-3`}>
+        <div className={`filters-container flex flex-col sm:flex-row gap-3 ${showCards && !showFilters ? 'hidden' : ''}`}>
           <select
             value={filterAction}
             onChange={(e) => { setFilterAction(e.target.value); setPage(1); }}
