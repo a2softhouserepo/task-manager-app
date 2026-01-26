@@ -76,31 +76,50 @@ export async function createBackup(userId: string, type: 'AUTO' | 'MANUAL' = 'MA
 
 /**
  * Verifica se já existe um backup automático do dia e cria um se não existir
+ * @param frequency - 'daily' verifica últimas 24h, 'every_login' sempre cria novo backup, 'disabled' não faz backup
  */
-export async function checkAndTriggerAutoBackup(): Promise<boolean> {
+export async function checkAndTriggerAutoBackup(frequency: 'daily' | 'every_login' | 'disabled' = 'daily'): Promise<boolean> {
   await dbConnect();
   
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  if (frequency === 'disabled') {
+    console.log('⏭️ Backup automático desabilitado via configuração.');
+    return false;
+  }
+  
+  if (frequency === 'every_login') {
+    console.log('🔄 Modo "todo login": criando backup automático...');
+    try {
+      await createBackup('SYSTEM', 'AUTO');
+      console.log('✅ Backup automático criado com sucesso.');
+      return true;
+    } catch (error) {
+      console.error('❌ Falha ao criar backup automático:', error);
+      return false;
+    }
+  }
+  
+  // Modo 'daily': verifica últimas 24h
+  const twentyFourHoursAgo = new Date();
+  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
-  // Verifica se já existe um backup AUTO criado hoje
+  // Verifica se já existe um backup AUTO criado nas últimas 24h
   const existingBackup = await Backup.findOne({
     type: 'AUTO',
-    createdAt: { $gte: today }
+    createdAt: { $gte: twentyFourHoursAgo }
   });
 
   if (!existingBackup) {
-    console.log('🔄 Disparando backup automático diário...');
+    console.log('🔄 Disparando backup automático (últimas 24h)...');
     try {
       await createBackup('SYSTEM', 'AUTO');
-      console.log('✅ Backup automático diário criado com sucesso.');
+      console.log('✅ Backup automático criado com sucesso.');
       return true;
     } catch (error) {
       console.error('❌ Falha ao criar backup automático:', error);
       return false;
     }
   } else {
-    console.log('ℹ️ Backup automático do dia já existe:', existingBackup.filename);
+    console.log('ℹ️ Backup automático já existe (criado há menos de 24h):', existingBackup.filename);
     return false;
   }
 }

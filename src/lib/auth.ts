@@ -85,15 +85,18 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        // Dispara backup automático diário quando rootAdmin loga
+        // Executar backup automático de forma síncrona se for rootAdmin
         if (user.role === 'rootAdmin') {
-          // Import dinâmico para evitar dependência circular
-          import('@/lib/backup-service').then(({ checkAndTriggerAutoBackup }) => {
-            // Fire and forget - não espera terminar para não travar o login
-            checkAndTriggerAutoBackup().catch(err => 
-              console.error('Erro no backup automático:', err)
-            );
-          }).catch(err => console.error('Erro ao importar backup-service:', err));
+          const backupFrequency = (process.env.BACKUP_FREQUENCY || 'daily') as 'daily' | 'every_login' | 'disabled';
+          console.log(`🔧 Backup automático configurado como: ${backupFrequency}`);
+          
+          try {
+            const { checkAndTriggerAutoBackup } = await import('@/lib/backup-service');
+            await checkAndTriggerAutoBackup(backupFrequency);
+          } catch (backupError) {
+            console.error('❌ Erro ao executar backup automático:', backupError);
+            // Não bloqueia o login se backup falhar
+          }
         }
 
         return {
