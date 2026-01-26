@@ -7,6 +7,13 @@ export interface IClient {
   _id: string;
   name: string;
   nameHash?: string; // Blind index for searching
+  // Campos de hierarquia
+  parentId?: string | null; // ID do cliente pai (null = cliente raiz)
+  path: string[]; // Array com IDs de todos os ancestrais
+  depth: number; // Nível na hierarquia (0 = raiz)
+  rootClientId?: string | null; // ID do cliente raiz da árvore
+  childrenCount: number; // Contador de filhos diretos
+  // Campos de contato
   phone?: string;
   phoneHash?: string;
   address?: string;
@@ -29,6 +36,32 @@ const ClientSchema = new Schema<IClient>(
       type: String,
       index: true,
     },
+    // Campos de hierarquia
+    parentId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    path: {
+      type: [String],
+      default: [],
+      index: true,
+    },
+    depth: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
+    rootClientId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    childrenCount: {
+      type: Number,
+      default: 0,
+    },
+    // Campos de contato
     phone: {
       type: String,
     },
@@ -67,6 +100,10 @@ const ClientSchema = new Schema<IClient>(
 // Index for faster queries
 ClientSchema.index({ active: 1 });
 ClientSchema.index({ createdBy: 1 });
+// Índices para hierarquia
+ClientSchema.index({ parentId: 1, active: 1 });
+ClientSchema.index({ rootClientId: 1, active: 1 });
+ClientSchema.index({ depth: 1, active: 1 });
 
 // Apply field encryption to sensitive fields with blind indexes for search
 ClientSchema.plugin(fieldEncryptionPlugin, {

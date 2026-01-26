@@ -60,6 +60,12 @@ export async function GET(
       address: clientObj.address,
       notes: clientObj.notes,
       active: clientObj.active,
+      // Campos de hierarquia
+      parentId: clientObj.parentId || null,
+      path: clientObj.path || [],
+      depth: clientObj.depth || 0,
+      rootClientId: clientObj.rootClientId || null,
+      childrenCount: clientObj.childrenCount || 0,
       createdAt: clientObj.createdAt,
       updatedAt: clientObj.updatedAt,
     };
@@ -179,6 +185,12 @@ export async function PUT(
       address: clientObj.address,
       notes: clientObj.notes,
       active: clientObj.active,
+      // Campos de hierarquia
+      parentId: clientObj.parentId || null,
+      path: clientObj.path || [],
+      depth: clientObj.depth || 0,
+      rootClientId: clientObj.rootClientId || null,
+      childrenCount: clientObj.childrenCount || 0,
       createdAt: clientObj.createdAt,
       updatedAt: clientObj.updatedAt,
     };
@@ -222,6 +234,8 @@ export async function DELETE(
 
     await dbConnect();
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const cascade = searchParams.get('cascade') === 'true';
 
     const client = await Client.findById(id);
     if (!client) {
@@ -242,16 +256,56 @@ export async function DELETE(
       );
     }
 
+    // Verificar se tem filhos
+    const childrenCount = await Client.countDocuments({ parentId: id });
+    
+    if (childrenCount > 0 && !cascade) {
+      return NextResponse.json(
+        { 
+          error: `Este cliente possui ${childrenCount} sub-cliente(s). Exclua os sub-clientes primeiro ou use exclusão em cascata.`,
+          hasChildren: true,
+          childrenCount 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Se cascade, deletar todos os descendentes
+    let deletedIds: string[] = [id];
+    if (cascade && childrenCount > 0) {
+      // Buscar todos os descendentes (clientes que têm este ID no path)
+      const descendants = await Client.find({ path: id });
+      deletedIds = [id, ...descendants.map(d => d._id.toString())];
+      
+      // Deletar todos os descendentes
+      await Client.deleteMany({ path: id });
+    }
+
+    // Decrementar childrenCount do pai
+    if (client.parentId) {
+      await Client.findByIdAndUpdate(client.parentId, { $inc: { childrenCount: -1 } });
+    }
+
     await logAudit({
       action: 'DELETE',
       resource: 'CLIENT',
       resourceId: id,
-      details: { deleted: createAuditSnapshot(client.toObject()) },
+      details: { 
+        deleted: createAuditSnapshot(client.toObject()),
+        cascade,
+        deletedIds,
+        totalDeleted: deletedIds.length
+      },
     });
 
     await Client.findByIdAndDelete(id);
 
-    return NextResponse.json({ message: 'Cliente deletado com sucesso' });
+    return NextResponse.json({ 
+      message: cascade && deletedIds.length > 1 
+        ? `Cliente e ${deletedIds.length - 1} sub-cliente(s) deletados com sucesso`
+        : 'Cliente deletado com sucesso',
+      deletedIds
+    });
   } catch (error: any) {
     console.error('Error deleting client:', error);
     return NextResponse.json(

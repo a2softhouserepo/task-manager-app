@@ -12,6 +12,13 @@ interface Client {
   email?: string;
   address?: string;
   active: boolean;
+  // Campos de hierarquia
+  parentId?: string | null;
+  path?: string[];
+  depth?: number;
+  rootClientId?: string | null;
+  childrenCount?: number;
+  children?: Client[]; // Para estrutura em árvore
   createdAt: string;
 }
 
@@ -20,6 +27,7 @@ const clientSchema = z.object({
   name: z.string()
     .min(2, 'Nome deve ter pelo menos 2 caracteres')
     .max(100, 'Nome deve ter no máximo 100 caracteres'),
+  parentId: z.string().nullable().optional(),
   phone: z.string()
     .optional()
     .refine((val) => !val || /^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(val), {
@@ -44,11 +52,13 @@ export default function ClientsPage() {
   const { density } = useUI();
   const isCompact = density === 'compact';
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientsTree, setClientsTree] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   
   // Ordenação
   const [sortColumn, setSortColumn] = useState<'name' | 'email'>('name');
@@ -56,6 +66,7 @@ export default function ClientsPage() {
   
   const [form, setForm] = useState({
     name: '',
+    parentId: null as string | null,
     phone: '',
     email: '',
     address: '',
@@ -142,9 +153,19 @@ export default function ClientsPage() {
 
   const loadClients = async () => {
     try {
-      const res = await fetch('/api/clients');
-      const data = await res.json();
-      setClients(data.clients || []);
+      // Carregar lista plana e em árvore
+      const [resFlat, resTree] = await Promise.all([
+        fetch('/api/clients'),
+        fetch('/api/clients?tree=true')
+      ]);
+      const dataFlat = await resFlat.json();
+      const dataTree = await resTree.json();
+      setClients(dataFlat.clients || []);
+      setClientsTree(dataTree.clients || []);
+      
+      // Expandir todos os clientes raiz por padrão
+      const rootIds = (dataTree.clients || []).map((c: Client) => c._id);
+      setExpandedClients(new Set(rootIds));
     } catch (error) {
       console.error('Error loading clients:', error);
     } finally {
@@ -152,10 +173,24 @@ export default function ClientsPage() {
     }
   };
 
-  const openNewModal = () => {
+  // Toggle expandir/colapsar cliente
+  const toggleExpand = (clientId: string) => {
+    setExpandedClients(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(clientId)) {
+        newSet.delete(clientId);
+      } else {
+        newSet.add(clientId);
+      }
+      return newSet;
+    });
+  };
+
+  const openNewModal = (parentId?: string | null) => {
     setEditingClient(null);
     setForm({
       name: '',
+      parentId: parentId || null,
       phone: '',
       email: '',
       address: '',
@@ -169,6 +204,7 @@ export default function ClientsPage() {
     setEditingClient(client);
     setForm({
       name: client.name,
+      parentId: client.parentId || null,
       phone: client.phone || '',
       email: client.email || '',
       address: client.address || '',
@@ -204,10 +240,15 @@ export default function ClientsPage() {
         ? `/api/clients/${editingClient._id}` 
         : '/api/clients';
       
+      // Preparar dados para envio (incluir parentId se for novo cliente)
+      const dataToSend = editingClient 
+        ? { name: form.name, phone: form.phone, email: form.email, address: form.address, active: form.active }
+        : { ...form, parentId: form.parentId || null };
+      
       const res = await fetch(url, {
         method: editingClient ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(dataToSend),
       });
       
       if (res.ok) {
@@ -225,7 +266,39 @@ export default function ClientsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, hasChildren: boolean = false) => {
+    const client = clients.find(c => c._id === id);
+    const childrenCount = client?.childrenCount || 0;
+    
+    if (childrenCount > 0) {
+      const confirmCascade = confirm(
+        `Este cliente possui ${childrenCount} sub-cliente(s).\n\n` +
+        `Deseja excluir o cliente E todos os sub-clientes?\n\n` +
+        `Clique em OK para excluir tudo ou Cancelar para abortar.`
+      );
+      if (!confirmCascade) return;
+      
+      setDeleting(id);
+      try {
+        const res = await fetch(`/api/clients/${id}?cascade=true`, {
+          method: 'DELETE',
+        });
+        
+        if (res.ok) {
+          loadClients();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Erro ao excluir cliente');
+        }
+      } catch (error) {
+        console.error('Error deleting client:', error);
+        alert('Erro ao excluir cliente');
+      } finally {
+        setDeleting(null);
+      }
+      return;
+    }
+    
     if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
     
     setDeleting(id);
@@ -270,7 +343,7 @@ export default function ClientsPage() {
   };
 
   // Função para lidar com mudança nos campos
-  const handleFieldChange = (field: keyof typeof form, value: string | boolean) => {
+  const handleFieldChange = (field: keyof typeof form, value: string | boolean | null) => {
     let processedValue = value;
     
     // Formatar telefone automaticamente
@@ -284,6 +357,162 @@ export default function ClientsPage() {
     if (validationErrors[field as keyof ClientFormData]) {
       setValidationErrors({ ...validationErrors, [field]: undefined });
     }
+  };
+
+  // Função para renderizar linha do cliente com hierarquia
+  const renderClientRow = (client: Client, level: number): React.ReactElement => {
+    const hasChildren = (client.children && client.children.length > 0) || (client.childrenCount && client.childrenCount > 0);
+    const isExpanded = expandedClients.has(client._id);
+    const paddingLeft = level * 24;
+    
+    return (
+      <div key={client._id}>
+        <div 
+          className={`flex items-center gap-3 ${isCompact ? 'py-2 px-3' : 'py-3 px-4'} hover:bg-gray-50 dark:hover:bg-gray-800/30 rounded-lg transition-colors group`}
+          style={{ paddingLeft: `${paddingLeft + 12}px` }}
+        >
+          {/* Expand/Collapse button */}
+          <button
+            onClick={() => hasChildren && toggleExpand(client._id)}
+            className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${
+              hasChildren 
+                ? 'hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer' 
+                : 'cursor-default'
+            }`}
+          >
+            {hasChildren ? (
+              <svg 
+                className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
+            )}
+          </button>
+          
+          {/* Ícone de pasta/documento */}
+          <div className={`p-1.5 rounded-lg ${hasChildren ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+            {hasChildren ? (
+              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            )}
+          </div>
+          
+          {/* Info do cliente */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-foreground truncate">{client.name}</span>
+              {level > 0 && (
+                <span className="text-xs text-muted-foreground bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                  Sub-cliente
+                </span>
+              )}
+              {!client.active && (
+                <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                  Inativo
+                </span>
+              )}
+            </div>
+            {(client.email || client.phone) && (
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                {client.email}{client.email && client.phone ? ' • ' : ''}{client.phone}
+              </div>
+            )}
+          </div>
+          
+          {/* Ações */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Adicionar sub-cliente */}
+            <button
+              onClick={() => openNewModal(client._id)}
+              className="p-1.5 text-muted-foreground hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:text-green-400 dark:hover:bg-green-950/30"
+              title="Adicionar sub-cliente"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            
+            {/* Editar */}
+            <button
+              onClick={() => openEditModal(client)}
+              className="p-1.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
+              title="Editar"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            
+            {/* Excluir */}
+            {canDelete && (
+              <button
+                onClick={() => handleDelete(client._id)}
+                disabled={deleting === client._id}
+                className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
+                title="Excluir"
+              >
+                {deleting === client._id ? (
+                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Filhos recursivamente */}
+        {isExpanded && client.children && client.children.length > 0 && (
+          <div className="border-l-2 border-gray-200 dark:border-gray-700 ml-6">
+            {client.children.map(child => renderClientRow(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Obter nome do cliente pai
+  const getParentClientName = (parentId: string | null): string => {
+    if (!parentId) return '';
+    const parent = clients.find(c => c._id === parentId);
+    return parent?.name || '';
+  };
+
+  // Construir opções hierárquicas para select de cliente pai
+  const buildParentOptions = (clientList: Client[], level: number = 0, excludeId?: string): React.ReactElement[] => {
+    const options: React.ReactElement[] = [];
+    
+    clientList.forEach(client => {
+      // Não mostrar o próprio cliente ou seus descendentes como opção de pai
+      if (excludeId && (client._id === excludeId || (client.path && client.path.includes(excludeId)))) {
+        return;
+      }
+      
+      const prefix = '—'.repeat(level);
+      options.push(
+        <option key={client._id} value={client._id}>
+          {prefix}{prefix ? ' ' : ''}{client.name}
+        </option>
+      );
+      
+      if (client.children && client.children.length > 0) {
+        options.push(...buildParentOptions(client.children, level + 1, excludeId));
+      }
+    });
+    
+    return options;
   };
 
   if (status === 'loading' || loading) {
@@ -303,11 +532,11 @@ export default function ClientsPage() {
               Clientes
             </h1>
             <p className="text-muted-foreground">
-              Gerencie seus clientes
+              Gerencie seus clientes e sub-clientes
             </p>
           </div>
           <button
-            onClick={openNewModal}
+            onClick={() => openNewModal()}
             className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -317,104 +546,16 @@ export default function ClientsPage() {
           </button>
         </div>
 
-        {/* Lista */}
+        {/* Lista em Árvore */}
         <div className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-200">
-              <thead className="">
-                <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
-                    <button
-                      onClick={() => handleSort('name')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    >
-                      NOME
-                      {renderSortIcon('name')}
-                    </button>
-                  </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>TELEFONE</th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
-                    <button
-                      onClick={() => handleSort('email')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    >
-                      E-MAIL
-                      {renderSortIcon('email')}
-                    </button>
-                  </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>ENDEREÇO</th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>STATUS</th>
-                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>AÇÕES</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {getSortedClients().map((client) => (
-                <tr key={client._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                  <td className={`text-sm whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                    <span className="font-medium text-foreground">
-                      {client.name}
-                    </span>
-                  </td>
-                  <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                    {client.phone || '-'}
-                  </td>
-                  <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                    {client.email || '-'}
-                  </td>
-                  <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                    <div className="max-w-xs truncate" title={client.address || ''}>
-                      {client.address || '-'}
-                    </div>
-                  </td>
-                  <td className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      client.active
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                    }`}>
-                      {client.active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => openEditModal(client)}
-                        className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-muted-foreground dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
-                        title="Editar"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      {canDelete && (
-                        <button
-                          onClick={() => handleDelete(client._id)}
-                          disabled={deleting === client._id}
-                          className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-muted-foreground dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
-                          title="Excluir"
-                        >
-                          {deleting === client._id ? (
-                            <div className="w-5 h-5 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {clients.length === 0 && (
-                <tr>
-                  <td colSpan={6} className={`text-center text-muted-foreground ${isCompact ? 'px-3 py-8' : 'px-4 py-12'}`}>
-                    Nenhum cliente cadastrado
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <div className="space-y-1">
+            {clientsTree.length === 0 ? (
+              <div className={`text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
+                Nenhum cliente cadastrado
+              </div>
+            ) : (
+              clientsTree.map(client => renderClientRow(client, 0))
+            )}
           </div>
         </div>
 
@@ -422,9 +563,29 @@ export default function ClientsPage() {
         <Modal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          title={editingClient ? 'Editar Cliente' : 'Novo Cliente'}
+          title={editingClient ? 'Editar Cliente' : (form.parentId ? `Novo Sub-cliente de ${getParentClientName(form.parentId)}` : 'Novo Cliente')}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Cliente Pai - apenas para novo cliente ou se já tem parentId */}
+            {(!editingClient || editingClient.parentId) && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Cliente Pai {!form.parentId && '(opcional)'}
+                </label>
+                <select
+                  value={form.parentId || ''}
+                  onChange={(e) => handleFieldChange('parentId', e.target.value || null)}
+                  className="input-soft"
+                >
+                  <option value="">Nenhum (Cliente Direto)</option>
+                  {buildParentOptions(clientsTree, 0, editingClient?._id)}
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Deixe vazio para criar um cliente direto ou selecione um cliente existente para criar um sub-cliente.
+                </p>
+              </div>
+            )}
+            
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
                 Nome *
@@ -434,7 +595,7 @@ export default function ClientsPage() {
                 value={form.name}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
                 className={`input-soft ${validationErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                placeholder="Nome do cliente"
+                placeholder={form.parentId ? 'Nome do sub-cliente' : 'Nome do cliente'}
               />
               {validationErrors.name && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">

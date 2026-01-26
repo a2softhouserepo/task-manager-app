@@ -34,13 +34,42 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const active = searchParams.get('active');
+    const parentId = searchParams.get('parentId');
+    const rootClientId = searchParams.get('rootClientId');
+    const includeDescendants = searchParams.get('includeDescendants') === 'true';
+    const tree = searchParams.get('tree') === 'true';
     
     const query: any = {};
     if (active !== null) {
       query.active = active === 'true';
     }
+    
+    // Filtro por cliente pai
+    if (parentId !== null) {
+      if (parentId === 'null' || parentId === '') {
+        query.parentId = null; // Apenas clientes raiz
+      } else {
+        if (includeDescendants) {
+          // Cliente + todos os descendentes
+          query.$or = [
+            { _id: parentId },
+            { path: parentId }
+          ];
+        } else {
+          query.parentId = parentId; // Apenas filhos diretos
+        }
+      }
+    }
+    
+    // Filtro por cliente raiz (toda a árvore)
+    if (rootClientId) {
+      query.$or = [
+        { _id: rootClientId },
+        { rootClientId: rootClientId }
+      ];
+    }
 
-    const clients = await Client.find(query).sort({ name: 1 });
+    const clients = await Client.find(query).sort({ depth: 1, name: 1 });
 
     // Convert Mongoose documents to plain objects (already decrypted by plugin)
     const clientsPlain = clients.map(client => {
@@ -65,10 +94,22 @@ export async function GET(request: NextRequest) {
         address: obj.address,
         notes: obj.notes,
         active: obj.active,
+        // Campos de hierarquia
+        parentId: obj.parentId || null,
+        path: obj.path || [],
+        depth: obj.depth || 0,
+        rootClientId: obj.rootClientId || null,
+        childrenCount: obj.childrenCount || 0,
         createdAt: obj.createdAt,
         updatedAt: obj.updatedAt,
       };
     });
+
+    // Se solicitou estrutura em árvore
+    if (tree) {
+      const clientTree = buildClientTree(clientsPlain);
+      return NextResponse.json({ clients: clientTree });
+    }
 
     return NextResponse.json({ clients: clientsPlain });
   } catch (error: any) {
@@ -80,8 +121,33 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Função auxiliar para construir árvore de clientes
+function buildClientTree(clients: any[]): any[] {
+  const clientMap = new Map<string, any>();
+  const roots: any[] = [];
+
+  // Primeiro, mapear todos os clientes
+  clients.forEach(client => {
+    clientMap.set(client._id, { ...client, children: [] });
+  });
+
+  // Depois, construir a árvore
+  clients.forEach(client => {
+    const node = clientMap.get(client._id);
+    if (client.parentId && clientMap.has(client.parentId)) {
+      const parent = clientMap.get(client.parentId);
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  return roots;
+}
+
 const createClientSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(200, 'Nome muito longo'),
+  parentId: z.string().nullable().optional(), // ID do cliente pai
   phone: z.string().max(20, 'Telefone muito longo').optional(),
   address: z.string().max(500, 'Endereço muito longo').optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
@@ -112,11 +178,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, phone, address, email, notes, active } = validationResult.data;
+    const { name, parentId, phone, address, email, notes, active } = validationResult.data;
+
+    // Calcular campos de hierarquia
+    let path: string[] = [];
+    let depth = 0;
+    let rootClientId: string | null = null;
+
+    if (parentId) {
+      const parentClient = await Client.findById(parentId);
+      if (!parentClient) {
+        return NextResponse.json({ error: 'Cliente pai não encontrado' }, { status: 400 });
+      }
+      
+      // Construir path: path do pai + id do pai
+      path = [...(parentClient.path || []), parentId];
+      depth = (parentClient.depth || 0) + 1;
+      // rootClientId é o primeiro da árvore (ou o pai se pai é raiz)
+      rootClientId = parentClient.rootClientId || parentId;
+    }
 
     // Trim all string fields before saving
     const trimmedData = {
       name: name.trim(),
+      parentId: parentId || null,
+      path,
+      depth,
+      rootClientId,
+      childrenCount: 0,
       phone: phone?.trim() || undefined,
       address: address?.trim() || undefined,
       email: email?.trim() || undefined,
@@ -127,11 +216,16 @@ export async function POST(request: NextRequest) {
 
     const client = await Client.create(trimmedData);
 
+    // Incrementar childrenCount do pai
+    if (parentId) {
+      await Client.findByIdAndUpdate(parentId, { $inc: { childrenCount: 1 } });
+    }
+
     await logAudit({
       action: 'CREATE',
       resource: 'CLIENT',
       resourceId: client._id.toString(),
-      details: createAuditSnapshot(client.toObject()),
+      details: createAuditSnapshot({ ...client.toObject(), parentId }),
     });
 
     // Re-fetch to trigger post-init hooks for decryption
@@ -151,6 +245,11 @@ export async function POST(request: NextRequest) {
       address: clientObj.address,
       notes: clientObj.notes,
       active: clientObj.active,
+      parentId: clientObj.parentId || null,
+      path: clientObj.path || [],
+      depth: clientObj.depth || 0,
+      rootClientId: clientObj.rootClientId || null,
+      childrenCount: clientObj.childrenCount || 0,
       createdAt: clientObj.createdAt,
       updatedAt: clientObj.updatedAt,
     };
