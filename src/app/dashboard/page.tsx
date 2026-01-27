@@ -815,6 +815,7 @@ export default function DashboardPage() {
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>CATEGORIA</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>CLIENTE</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>TÍTULO</th>
+                <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>STATUS</th>
                 <th className={`px-4 text-right whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>AÇÕES</th>
               </tr>
             </thead>
@@ -845,6 +846,19 @@ export default function DashboardPage() {
                     <div className="max-w-xs truncate" title={task.title}>
                       {task.title}
                     </div>
+                  </td>
+                  <td className={`px-4 text-sm whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      task.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                      task.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                      task.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    }`}>
+                      {task.status === 'completed' ? 'Concluída' :
+                       task.status === 'in_progress' ? 'Em Progresso' :
+                       task.status === 'cancelled' ? 'Cancelada' :
+                       'Pendente'}
+                    </span>
                   </td>
                   <td className={`px-4 whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     <div className="flex items-center justify-end gap-2">
