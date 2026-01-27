@@ -23,10 +23,14 @@ const ACTION_COLORS: Record<string, string> = {
   CREATE: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   UPDATE: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   DELETE: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  LOGIN: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  LOGOUT: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  VIEW: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  READ: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  LOGIN_SUCCESS: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  LOGIN_FAILED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  AUTH_FAILURE: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   EXPORT: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  BACKUP_DOWNLOAD: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  BACKUP_RESTORE: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  IMPORT: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
 };
 
 export default function AuditLogsPage() {
@@ -156,10 +160,14 @@ export default function AuditLogsPage() {
             <option value="CREATE">Criar</option>
             <option value="UPDATE">Atualizar</option>
             <option value="DELETE">Excluir</option>
-            <option value="LOGIN">Login</option>
-            <option value="LOGOUT">Logout</option>
-            <option value="VIEW">Visualizar</option>
+            <option value="READ">Ler</option>
+            <option value="LOGIN_SUCCESS">Login Sucesso</option>
+            <option value="LOGIN_FAILED">Login Falhou</option>
+            <option value="AUTH_FAILURE">Falha de Autenticação</option>
             <option value="EXPORT">Exportar</option>
+            <option value="BACKUP_DOWNLOAD">Download de Backup</option>
+            <option value="BACKUP_RESTORE">Restaurar Backup</option>
+            <option value="IMPORT">Importar</option>
           </select>
           
           <select
@@ -168,11 +176,14 @@ export default function AuditLogsPage() {
             className="input-soft w-full sm:w-auto min-h-[44px]"
           >
             <option value="">Todos os recursos</option>
-            <option value="Task">Tarefas</option>
-            <option value="Client">Clientes</option>
-            <option value="Category">Categorias</option>
-            <option value="User">Usuários</option>
-            <option value="Session">Sessões</option>
+            <option value="TASK">Tarefas</option>
+            <option value="CLIENT">Clientes</option>
+            <option value="CATEGORY">Categorias</option>
+            <option value="USER">Usuários</option>
+            <option value="BACKUP">Backups</option>
+            <option value="SYSTEM_CONFIG">Configurações</option>
+            <option value="AUDIT_LOG">Logs de Auditoria</option>
+            <option value="SYSTEM">Sistema</option>
           </select>
           
           {hasActiveFilters && (
