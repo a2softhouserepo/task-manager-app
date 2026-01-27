@@ -10,9 +10,18 @@ import { useUI } from '@/contexts/UIContext';
 import { getChartColors } from '@/lib/chartColors';
 import Modal from '@/components/Modal';
 
+// Importação síncrona dos componentes do PieChart (Cell não funciona com lazy load)
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer as PieResponsiveContainer,
+  Tooltip as PieTooltip,
+} from 'recharts';
+
 /**
- * OTIMIZAÇÃO: Lazy load de Recharts
- * Reduz bundle inicial em ~300KB, carregando apenas quando necessário
+ * OTIMIZAÇÃO: Lazy load de Recharts (apenas BarChart)
+ * Reduz bundle inicial, carregando apenas quando necessário
  */
 const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
 const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
@@ -21,9 +30,6 @@ const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false 
 const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
 const RechartsTooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
 const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
-const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: false });
-const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false });
-const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false });
 const RechartsLegend = dynamic(() => import('recharts').then(m => m.Legend), { ssr: false });
 
 interface Task {
@@ -658,7 +664,7 @@ export default function DashboardPage() {
             Top 5 Clientes
           </h3>
           <div className={`h-64 ${isCompact ? 'h-48' : 'h-64'}`}>
-            <ResponsiveContainer width="100%" height="100%">
+            <PieResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <defs>
                   {COLORS.map((color, index) => (
@@ -696,7 +702,7 @@ export default function DashboardPage() {
                     />
                   ))}
                 </Pie>
-                <RechartsTooltip 
+                <PieTooltip 
                   contentStyle={{
                     backgroundColor: chartColors.tooltipBg,
                     border: `1px solid ${chartColors.tooltipBorder}`,
@@ -712,7 +718,7 @@ export default function DashboardPage() {
                   }}
                 />
               </PieChart>
-            </ResponsiveContainer>
+            </PieResponsiveContainer>
           </div>
         </div>
       </div>
