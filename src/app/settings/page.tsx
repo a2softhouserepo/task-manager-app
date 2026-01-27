@@ -321,9 +321,17 @@ export default function SettingsPage() {
             {Object.entries(configsByCategory).map(([category, categoryConfigs]) => {
               const catInfo = CATEGORY_LABELS[category] || CATEGORY_LABELS.general;
               
+              // Classes condicionais para o header da categoria
+              const headerClasses = {
+                backup: 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/10',
+                security: 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/10',
+                email: 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-purple-50 dark:bg-purple-900/10',
+                general: 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/10',
+              }[category] || 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/10';
+              
               return (
                 <div key={category} className="card-soft overflow-hidden">
-                  <div className={`px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-${catInfo.color}-50 dark:bg-${catInfo.color}-900/10`}>
+                  <div className={headerClasses}>
                     <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                       <span>{catInfo.icon}</span>
                       {catInfo.label}
