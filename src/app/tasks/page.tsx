@@ -692,10 +692,10 @@ export default function TasksPage() {
   const totalFiltered = tasks.reduce((sum, t) => sum + t.cost, 0);
 
   return (
-    <div className="min-h-screen">
+    <div id="tasks-page" className="min-h-screen">
       <div className="density-container density-py">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
+        <header id="tasks-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Tarefas
@@ -724,10 +724,10 @@ export default function TasksPage() {
               Nova Tarefa
             </button>
           </div>
-        </div>
+        </header>
 
         {/* Filtros */}
-        <div className={`card-soft ${isCompact ? 'p-3 mb-3' : 'p-6 mb-6'}`}>
+        <section id="tasks-filters" className={`card-soft ${isCompact ? 'p-3 mb-3' : 'p-6 mb-6'}`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-lg font-semibold text-foreground whitespace-nowrap">
               Tarefas do Período
@@ -801,10 +801,10 @@ export default function TasksPage() {
               </select>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Totalizador */}
-        <div className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg ${isCompact ? 'p-3 mb-3' : 'p-4 mb-4'}`}>
+        <div id="tasks-summary" className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg ${isCompact ? 'p-3 mb-3' : 'p-4 mb-4'}`}>
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">
               {tasks.length} tarefa(s) encontrada(s)
@@ -816,7 +816,7 @@ export default function TasksPage() {
         </div>
 
         {/* Lista */}
-        <div className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
+        <section id="tasks-table" className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-200">
               <thead className="">
@@ -953,7 +953,7 @@ export default function TasksPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
         {/* Modal de Visualização */}
         <Modal

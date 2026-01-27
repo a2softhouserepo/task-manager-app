@@ -231,10 +231,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div id="settings-page" className="min-h-screen">
       <div className="density-container density-py">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
+        <header id="settings-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Configurações do Sistema
@@ -273,7 +273,7 @@ export default function SettingsPage() {
               </button>
             </div>
           )}
-        </div>
+        </header>
 
         {/* Mensagem de sucesso */}
         {successMessage && (
@@ -300,6 +300,7 @@ export default function SettingsPage() {
         )}
 
         {/* Configurações por categoria */}
+        <section id="settings-list">
         {configs.length === 0 ? (
           <div className="card-soft p-8 text-center">
             <svg className="w-12 h-12 mx-auto text-muted-foreground mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -377,6 +378,7 @@ export default function SettingsPage() {
             <li>• Se uma configuração não existir no banco, o sistema usa o valor padrão do arquivo .env.</li>
           </ul>
         </div>
+        </section>
       </div>
     </div>
   );

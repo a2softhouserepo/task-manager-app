@@ -244,9 +244,9 @@ export default function BackupsPage() {
   }
 
   return (
-    <div className="density-container density-py">
+    <div id="backups-page" className="density-container density-py">
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
+      <header id="backups-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
@@ -301,10 +301,10 @@ export default function BackupsPage() {
             Novo Backup Manual
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Aviso */}
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+      <aside id="backups-info" className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
         <div className="flex items-start gap-3">
           <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -330,10 +330,10 @@ export default function BackupsPage() {
             </ul>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* Tabela de Backups */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden">
+      <section id="backups-list" className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -448,10 +448,10 @@ export default function BackupsPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
       {/* Área de Perigo */}
-      <div className="mt-8 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 rounded-xl p-6">
+      <aside id="backups-danger-zone" className="mt-8 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-red-800 dark:text-red-400 flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -499,7 +499,7 @@ export default function BackupsPage() {
           )}
           Limpar Todos os Dados
         </button>
-      </div>
+      </aside>
     </div>
   );
 }

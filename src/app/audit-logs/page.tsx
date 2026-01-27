@@ -120,9 +120,9 @@ export default function AuditLogsPage() {
   }
 
   return (
-    <div className="density-container density-py safe-area-x">
+    <div id="audit-logs-page" className="density-container density-py safe-area-x">
       {/* Header */}
-      <div className="flex flex-col gap-4 density-header-mb">
+      <header id="audit-logs-header" className="flex flex-col gap-4 density-header-mb">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">
@@ -195,9 +195,10 @@ export default function AuditLogsPage() {
             </button>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Lista - Desktop: Table, Mobile: Cards */}
+      <section id="audit-logs-list">
       {showCards ? (
         /* Mobile/Tablet: Cards */
         <div className="responsive-cards">
@@ -369,10 +370,11 @@ export default function AuditLogsPage() {
           </div>
         </div>
       )}
+      </section>
       
       {/* Paginação */}
       {totalPages > 1 && (
-        <div className={`flex items-center justify-between mt-4 ${isCompact ? 'px-3 py-2' : 'px-4 py-3'} card-soft`}>
+        <nav id="audit-logs-pagination" className={`flex items-center justify-between mt-4 ${isCompact ? 'px-3 py-2' : 'px-4 py-3'} card-soft`}>
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
@@ -393,7 +395,7 @@ export default function AuditLogsPage() {
             <span className="hidden sm:inline">Próxima</span>
             <span className="sm:hidden">→</span>
           </button>
-        </div>
+        </nav>
       )}
     </div>
   );

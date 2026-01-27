@@ -149,9 +149,9 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="density-container density-py">
+    <div id="categories-page" className="density-container density-py">
       {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
+        <header id="categories-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Categorias
@@ -169,10 +169,10 @@ export default function CategoriesPage() {
             </svg>
             Nova Categoria
           </button>
-        </div>
+        </header>
 
         {/* Grid de Categorias */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <section id="categories-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {categories.map((category) => (
             <div
               key={category._id}
@@ -235,7 +235,7 @@ export default function CategoriesPage() {
               Nenhuma categoria cadastrada
             </div>
           )}
-        </div>
+        </section>
 
         {/* Modal */}
         <Modal

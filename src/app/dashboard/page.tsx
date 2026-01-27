@@ -521,9 +521,9 @@ export default function DashboardPage() {
   const totalFiltered = tasks.reduce((sum, t) => sum + t.cost, 0);
 
   return (
-    <div className="density-container density-py">
+    <div id="dashboard-page" className="density-container density-py">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
+      <header id="dashboard-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between density-header-mb">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
             Dashboard
@@ -543,10 +543,10 @@ export default function DashboardPage() {
             Nova Tarefa
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 density-grid-gap density-mb">
+      <section id="dashboard-stats" className="grid grid-cols-1 md:grid-cols-3 density-grid-gap density-mb">
         <div className="card-soft density-card-padding">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
@@ -594,10 +594,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 density-grid-gap density-mb">
+      <section id="dashboard-charts" className="grid grid-cols-1 lg:grid-cols-2 density-grid-gap density-mb">
         {/* Gráfico de Barras - Mensal */}
         <div className="card-soft density-card-padding">
           <h3 className="text-lg font-semibold text-foreground mb-4">
@@ -721,10 +721,10 @@ export default function DashboardPage() {
             </PieResponsiveContainer>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Filtros e Listagem */}
-      <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
+      <section id="dashboard-tasks" className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h3 className="text-lg font-semibold text-foreground whitespace-nowrap">
             Tarefas do Período
@@ -901,7 +901,7 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
       {/* Modal Nova Tarefa */}
       <Modal

@@ -196,9 +196,9 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="density-container density-py">
+    <div id="users-page" className="density-container density-py">
       {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
+        <header id="users-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Usuários
@@ -216,10 +216,10 @@ export default function UsersPage() {
             </svg>
             Novo Usuário
           </button>
-        </div>
+        </header>
 
         {/* Lista */}
-        <div className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
+        <section id="users-list" className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="">
@@ -305,7 +305,7 @@ export default function UsersPage() {
             </tbody>
           </table>
           </div>
-        </div>
+        </section>
 
         {/* Modal */}
         <Modal

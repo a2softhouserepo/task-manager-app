@@ -524,9 +524,9 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="density-container density-py">
+    <div id="clients-page" className="density-container density-py">
       {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
+        <header id="clients-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 density-header-mb">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Clientes
@@ -544,10 +544,10 @@ export default function ClientsPage() {
             </svg>
             Novo Cliente
           </button>
-        </div>
+        </header>
 
         {/* Lista em Árvore */}
-        <div className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
+        <section id="clients-list" className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
           <div className="space-y-1">
             {clientsTree.length === 0 ? (
               <div className={`text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
@@ -557,7 +557,7 @@ export default function ClientsPage() {
               clientsTree.map(client => renderClientRow(client, 0))
             )}
           </div>
-        </div>
+        </section>
 
         {/* Modal */}
         <Modal
