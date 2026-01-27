@@ -2,7 +2,8 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent, useMemo, useCallback } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
 import Modal from '@/components/Modal';
@@ -133,10 +134,21 @@ export default function TasksPage() {
     }
   }, [status, router]);
 
+  /**
+   * OTIMIZAÇÃO: Debouncing de 300ms para evitar múltiplas requests
+   * durante mudanças rápidas de filtros
+   */
+  const debouncedLoadTasks = useDebouncedCallback(
+    () => {
+      if (status === 'authenticated') {
+        loadTasks();
+      }
+    },
+    300
+  );
+
   useEffect(() => {
-    if (status === 'authenticated') {
-      loadTasks();
-    }
+    debouncedLoadTasks();
   }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, filterStatus, useCustomPeriod]);
 
   const loadData = async () => {
@@ -165,7 +177,7 @@ export default function TasksPage() {
     }
   };
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       
@@ -194,10 +206,13 @@ export default function TasksPage() {
     } catch (error) {
       console.error('Error loading tasks:', error);
     }
-  };
+  }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, filterStatus, useCustomPeriod]);
 
-  // Função para ordenar tarefas
-  const getSortedTasks = () => {
+  /**
+   * OTIMIZAÇÃO: useMemo para evitar recálculos desnecessários da ordenação
+   * a cada re-render
+   */
+  const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
       let aValue: string | number, bValue: string | number;
 
@@ -228,7 +243,7 @@ export default function TasksPage() {
         return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
       }
     });
-  };
+  }, [tasks, sortColumn, sortDirection]);
 
   // Função para lidar com clique nos cabeçalhos
   const handleSort = (column: 'requestDate' | 'clientName' | 'title' | 'cost') => {
@@ -854,7 +869,7 @@ export default function TasksPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {getSortedTasks().map((task) => (
+                {sortedTasks.map((task) => (
                   <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer" onClick={() => openViewModal(task)}>
                     <td className={`text-sm whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <span className="font-medium text-foreground">

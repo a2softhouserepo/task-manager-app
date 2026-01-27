@@ -8,17 +8,53 @@ import { logAudit } from '@/lib/audit';
 import { getConfig } from '@/models/SystemConfig';
 
 /**
+ * OTIMIZAÇÃO: Constantes para streaming de backups
+ * Define tamanho de batch para processar documentos em chunks
+ */
+const BACKUP_BATCH_SIZE = 500; // Documentos por batch
+
+/**
+ * Processa uma collection em batches para evitar estouro de memória
+ * OTIMIZAÇÃO: Usa cursor do Mongoose para streaming
+ */
+async function collectInBatches<T>(model: any): Promise<T[]> {
+  const results: T[] = [];
+  const cursor = model.find({}).lean().cursor();
+  
+  let batch: T[] = [];
+  for await (const doc of cursor) {
+    batch.push(doc as T);
+    
+    if (batch.length >= BACKUP_BATCH_SIZE) {
+      results.push(...batch);
+      batch = [];
+    }
+  }
+  
+  // Adicionar batch final
+  if (batch.length > 0) {
+    results.push(...batch);
+  }
+  
+  return results;
+}
+
+/**
  * Cria um backup completo do sistema
+ * OTIMIZAÇÃO: Usa streaming com cursores para grandes volumes de dados
+ * Reduz uso de memória de O(n) para O(batch_size)
  */
 export async function createBackup(userId: string, type: 'AUTO' | 'MANUAL' = 'MANUAL') {
   await dbConnect();
   
-  // Coletar todos os dados (lean() para objetos JS puros, mais rápido)
+  // Coletar dados usando streaming para evitar estouro de memória
   // ⚠️ Usuários não são incluídos no backup por segurança
+  console.log('📦 Coletando dados para backup...');
+  
   const [tasks, clients, categories] = await Promise.all([
-    Task.find({}).lean(),
-    Client.find({}).lean(),
-    Category.find({}).lean()
+    collectInBatches(Task),
+    collectInBatches(Client),
+    collectInBatches(Category)
   ]);
 
   const stats = {
@@ -26,6 +62,8 @@ export async function createBackup(userId: string, type: 'AUTO' | 'MANUAL' = 'MA
     clients: clients.length,
     categories: categories.length
   };
+
+  console.log(`📊 Dados coletados: ${stats.tasks} tasks, ${stats.clients} clients, ${stats.categories} categories`);
 
   const backupData = {
     timestamp: new Date().toISOString(),

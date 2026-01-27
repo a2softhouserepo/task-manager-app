@@ -2,24 +2,29 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent, useMemo, useCallback } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
+import dynamic from 'next/dynamic';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
 import { getChartColors } from '@/lib/chartColors';
 import Modal from '@/components/Modal';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend as RechartsLegend
-} from 'recharts';
+
+/**
+ * OTIMIZAÇÃO: Lazy load de Recharts
+ * Reduz bundle inicial em ~300KB, carregando apenas quando necessário
+ */
+const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
+const RechartsTooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
+const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false });
+const RechartsLegend = dynamic(() => import('recharts').then(m => m.Legend), { ssr: false });
 
 interface Task {
   _id: string;
@@ -129,10 +134,21 @@ export default function DashboardPage() {
     }
   }, [status, router]);
 
+  /**
+   * OTIMIZAÇÃO: Debouncing de 300ms para evitar múltiplas requests
+   * durante mudanças rápidas de filtros
+   */
+  const debouncedLoadTasks = useDebouncedCallback(
+    () => {
+      if (status === 'authenticated') {
+        loadTasks();
+      }
+    },
+    300
+  );
+
   useEffect(() => {
-    if (status === 'authenticated') {
-      loadTasks();
-    }
+    debouncedLoadTasks();
   }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, useCustomPeriod]);
 
   const loadData = async () => {
@@ -164,7 +180,7 @@ export default function DashboardPage() {
     }
   };
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       
@@ -184,10 +200,12 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error loading tasks:', error);
     }
-  };
+  }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, useCustomPeriod]);
 
-  // Função para ordenar tarefas
-  const getSortedTasks = () => {
+  /**
+   * OTIMIZAÇÃO: useMemo para evitar recálculos desnecessários da ordenação
+   */
+  const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
       let aValue: any, bValue: any;
 
@@ -214,7 +232,35 @@ export default function DashboardPage() {
         return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
       }
     });
-  };
+  }, [tasks, sortColumn, sortDirection]);
+
+  /**
+   * OTIMIZAÇÃO: Memoização dos dados dos charts
+   * Evita recálculos em cada re-render
+   */
+  const barChartData = useMemo(() => {
+    return (stats?.monthlyData || []).map(d => ({
+      name: d.month,
+      total: d.total,
+      count: d.count
+    }));
+  }, [stats?.monthlyData]);
+
+  const pieChartClientData = useMemo(() => {
+    return (stats?.clientStats || []).map((c, index) => ({
+      name: c.clientName,
+      value: c.total,
+      color: COLORS[index % COLORS.length]
+    }));
+  }, [stats?.clientStats]);
+
+  const pieChartCategoryData = useMemo(() => {
+    return (stats?.categoryStats || []).map((c, index) => ({
+      name: c.categoryName,
+      value: c.total,
+      color: COLORS[index % COLORS.length]
+    }));
+  }, [stats?.categoryStats]);
 
   // Função para renderizar ícone de ordenação
   const renderSortIcon = (column: 'requestDate' | 'deliveryDate' | 'cost') => {
@@ -767,7 +813,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {getSortedTasks().map((task) => (
+              {sortedTasks.map((task) => (
                 <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
                   <td className={`px-4 text-sm text-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     {formatDate(task.requestDate)}

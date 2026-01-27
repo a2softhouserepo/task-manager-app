@@ -127,6 +127,18 @@ TaskSchema.index({ categoryId: 1 });
 TaskSchema.index({ userId: 1, requestDate: -1 });
 TaskSchema.index({ status: 1 });
 
+/**
+ * OTIMIZAÇÃO: Índices compostos adicionais para queries frequentes
+ * Criados para melhorar performance de:
+ * - Filtros por status + data (listagem de tarefas)
+ * - Filtros por cliente + categoria + data (relatórios)
+ * - Estatísticas por cliente/categoria (dashboard)
+ */
+TaskSchema.index({ status: 1, requestDate: -1 }); // Listagem filtrada por status
+TaskSchema.index({ clientId: 1, categoryId: 1, requestDate: -1 }); // Relatórios combinados
+TaskSchema.index({ clientId: 1, status: 1 }); // Stats por cliente
+TaskSchema.index({ categoryId: 1, status: 1 }); // Stats por categoria
+
 // Apply field encryption to sensitive fields with blind indexes
 TaskSchema.plugin(fieldEncryptionPlugin, {
   fields: ['title', 'description', 'observations'],

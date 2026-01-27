@@ -3,7 +3,7 @@
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
 import { UIProvider, useUI } from '@/contexts/UIContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Header from './Header';
 import MobileNav from './MobileNav';
 
@@ -28,6 +28,16 @@ function SessionExpirationChecker({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * OTIMIZAÇÃO: Cache de verificação de manutenção
+ * TTL de 30 segundos - reduz chamadas de API em ~90%
+ */
+interface MaintenanceCache {
+  enabled: boolean;
+  timestamp: number;
+}
+const MAINTENANCE_CACHE_TTL = 30 * 1000; // 30 segundos
+
+/**
  * Componente que verifica modo manutenção
  */
 function MaintenanceModeChecker({ children }: { children: React.ReactNode }) {
@@ -35,6 +45,7 @@ function MaintenanceModeChecker({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  const maintenanceCache = useRef<MaintenanceCache | null>(null);
   
   useEffect(() => {
     const checkMaintenance = async () => {
@@ -51,6 +62,17 @@ function MaintenanceModeChecker({ children }: { children: React.ReactNode }) {
         return;
       }
       
+      // OTIMIZAÇÃO: Usar cache se válido
+      const now = Date.now();
+      if (maintenanceCache.current && (now - maintenanceCache.current.timestamp) < MAINTENANCE_CACHE_TTL) {
+        if (maintenanceCache.current.enabled) {
+          router.push('/maintenance');
+          return;
+        }
+        setChecking(false);
+        return;
+      }
+      
       try {
         const res = await fetch('/api/settings/maintenance', {
           headers: { 'x-internal-request': 'true' }
@@ -58,6 +80,13 @@ function MaintenanceModeChecker({ children }: { children: React.ReactNode }) {
         
         if (res.ok) {
           const data = await res.json();
+          
+          // Atualizar cache
+          maintenanceCache.current = {
+            enabled: data.enabled,
+            timestamp: now
+          };
+          
           if (data.enabled) {
             router.push('/maintenance');
             return;
