@@ -168,7 +168,7 @@ export default function SettingsPage() {
         >
           {config.options.map((opt) => (
             <option key={opt} value={opt}>
-              {opt === 'daily' && 'Diário (24h)'}
+              {opt === 'daily' && 'Diário'}
               {opt === 'every_login' && 'A cada login'}
               {opt === 'disabled' && 'Desabilitado'}
               {!['daily', 'every_login', 'disabled'].includes(opt) && opt}
