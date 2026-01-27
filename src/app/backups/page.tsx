@@ -327,14 +327,7 @@ export default function BackupsPage() {
                 <span>🏷️</span>
                 <span><strong>Categorias</strong> - Todas as categorias de tarefas</span>
               </li>
-              <li className="flex items-center gap-2">
-                <span>👤</span>
-                <span><strong>Usuários não são inclusos</strong> - Os usuários e suas permissões não são backupeados</span>
-              </li>
             </ul>
-            <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-3">
-              O sistema cria automaticamente um backup diário quando o Root Admin faz login. Backups marcados como "AUTO" foram criados automaticamente.
-            </p>
           </div>
         </div>
       </div>
@@ -388,9 +381,6 @@ export default function BackupsPage() {
                       </span>
                       <span className="px-2 py-1 bg-gray-100 dark:bg-zinc-800 rounded" title="Categorias">
                         🏷️ {backup.stats?.categories || 0}
-                      </span>
-                      <span className="px-2 py-1 bg-gray-100 dark:bg-zinc-800 rounded" title="Usuários">
-                        👤 {backup.stats?.users || 0}
                       </span>
                     </div>
                   </td>
