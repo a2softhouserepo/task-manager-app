@@ -116,7 +116,7 @@ export async function createBackup(userId: string, type: 'AUTO' | 'MANUAL' = 'MA
 /**
  * Verifica se já existe um backup automático do dia e cria um se não existir
  * Também executa limpeza de backups antigos após criação bem-sucedida
- * @param frequency - 'daily' verifica últimas 24h, 'every_login' sempre cria novo backup, 'disabled' não faz backup
+ * @param frequency - 'daily' verifica se já existe backup no dia atual, 'every_login' sempre cria novo backup, 'disabled' não faz backup
  */
 export async function checkAndTriggerAutoBackup(frequency: 'daily' | 'every_login' | 'disabled' = 'daily'): Promise<boolean> {
   await dbConnect();
@@ -139,18 +139,18 @@ export async function checkAndTriggerAutoBackup(frequency: 'daily' | 'every_logi
       return false;
     }
   } else {
-    // Modo 'daily': verifica últimas 24h
-    const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    // Modo 'daily': verifica se já existe backup no dia atual (desde meia-noite)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0); // Meia-noite do dia atual
 
-    // Verifica se já existe um backup AUTO criado nas últimas 24h
+    // Verifica se já existe um backup AUTO criado hoje
     const existingBackup = await Backup.findOne({
       type: 'AUTO',
-      createdAt: { $gte: twentyFourHoursAgo }
+      createdAt: { $gte: todayStart }
     });
 
     if (!existingBackup) {
-      console.log('🔄 Disparando backup automático (últimas 24h)...');
+      console.log('🔄 Disparando backup automático (primeiro do dia)...');
       try {
         await createBackup('SYSTEM', 'AUTO');
         console.log('✅ Backup automático criado com sucesso.');
@@ -160,7 +160,7 @@ export async function checkAndTriggerAutoBackup(frequency: 'daily' | 'every_logi
         return false;
       }
     } else {
-      console.log('ℹ️ Backup automático já existe (criado há menos de 24h):', existingBackup.filename);
+      console.log('ℹ️ Backup automático do dia já existe:', existingBackup.filename);
     }
   }
   
