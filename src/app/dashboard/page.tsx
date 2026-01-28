@@ -2,13 +2,13 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, FormEvent, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import dynamic from 'next/dynamic';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
 import { getChartColors } from '@/lib/chartColors';
-import Modal from '@/components/Modal';
+import TaskModal from '@/components/TaskModal';
 
 // Importação síncrona dos componentes do PieChart (Cell não funciona com lazy load)
 import {
@@ -112,20 +112,6 @@ export default function DashboardPage() {
   // Modal de nova tarefa
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [taskForm, setTaskForm] = useState({
-    requestDate: new Date().toISOString().split('T')[0],
-    clientId: '',
-    categoryId: '',
-    title: '',
-    description: '',
-    deliveryDate: '',
-    cost: 0,
-    observations: '',
-    status: 'pending',
-    sendToAsana: true,
-  });
-  const [taskAttachments, setTaskAttachments] = useState<File[]>([]);
-  const [savingTask, setSavingTask] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const userRole = (session?.user as any)?.role || 'user';
@@ -329,105 +315,21 @@ export default function DashboardPage() {
 
   const openEditModal = (task: Task) => {
     setEditingTask(task);
-    setTaskForm({
-      requestDate: task.requestDate.split('T')[0],
-      clientId: task.clientId,
-      categoryId: task.categoryId,
-      title: task.title,
-      description: task.description,
-      deliveryDate: task.deliveryDate ? task.deliveryDate.split('T')[0] : '',
-      cost: task.cost,
-      observations: task.observations || '',
-      status: task.status,
-      sendToAsana: false,
-    });
-    setTaskAttachments([]);
     setShowTaskModal(true);
   };
 
   const openNewModal = () => {
     setEditingTask(null);
-    setTaskForm({
-      requestDate: new Date().toISOString().split('T')[0],
-      clientId: '',
-      categoryId: '',
-      title: '',
-      description: '',
-      deliveryDate: '',
-      cost: 0,
-      observations: '',
-      status: 'pending',
-      sendToAsana: true,
-    });
-    setTaskAttachments([]);
     setShowTaskModal(true);
   };
 
-  const handleSubmitTask = async (e: FormEvent) => {
-    e.preventDefault();
-    setSavingTask(true);
-    
-    try {
-      const url = editingTask ? `/api/tasks/${editingTask._id}` : '/api/tasks';
-      let res: Response;
-      
-      // Se não está editando e tem anexos, usa FormData
-      if (!editingTask && taskAttachments.length > 0 && taskForm.sendToAsana) {
-        const formData = new FormData();
-        
-        // Adiciona todos os campos do formulário
-        Object.entries(taskForm).forEach(([key, value]) => {
-          formData.append(key, value.toString());
-        });
-        formData.append('cost', Number(taskForm.cost).toString());
-        
-        // Adiciona os arquivos
-        taskAttachments.forEach((file) => {
-          formData.append('attachments', file);
-        });
-        
-        res = await fetch(url, {
-          method: 'POST',
-          body: formData,
-        });
-      } else {
-        res = await fetch(url, {
-          method: editingTask ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...taskForm,
-            cost: Number(taskForm.cost),
-          }),
-        });
-      }
-      
-      if (res.ok) {
-        setShowTaskModal(false);
-        setEditingTask(null);
-        setTaskAttachments([]);
-        setTaskForm({
-          requestDate: new Date().toISOString().split('T')[0],
-          clientId: '',
-          categoryId: '',
-          title: '',
-          description: '',
-          deliveryDate: '',
-          cost: 0,
-          observations: '',
-          status: 'pending',
-          sendToAsana: true,
-        });
-        loadData();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Erro ao salvar tarefa');
-      }
-    } catch (error) {
-      console.error('Error creating task:', error);
-      alert('Erro ao criar tarefa');
-    } finally {
-      setSavingTask(false);
-    }
+  const handleTaskModalClose = () => {
+    setShowTaskModal(false);
+    setEditingTask(null);
+  };
+
+  const handleTaskModalSuccess = () => {
+    loadData();
   };
 
   const handleDelete = async (id: string) => {
@@ -903,231 +805,15 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* Modal Nova Tarefa */}
-      <Modal
+      {/* Modal Nova/Editar Tarefa */}
+      <TaskModal
         isOpen={showTaskModal}
-        onClose={() => {
-          setShowTaskModal(false);
-          setEditingTask(null);
-        }}
-        title={editingTask ? 'Editar Tarefa' : 'Nova Tarefa'}
-        size="lg"
-      >
-        <form onSubmit={handleSubmitTask} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Data de Solicitação
-              </label>
-              <input
-                type="date"
-                value={taskForm.requestDate}
-                onChange={(e) => setTaskForm({ ...taskForm, requestDate: e.target.value })}
-                className="input-soft"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Data de Entrega
-              </label>
-              <input
-                type="date"
-                value={taskForm.deliveryDate}
-                onChange={(e) => setTaskForm({ ...taskForm, deliveryDate: e.target.value })}
-                className="input-soft"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Cliente *
-              </label>
-              <select
-                value={taskForm.clientId}
-                onChange={(e) => setTaskForm({ ...taskForm, clientId: e.target.value })}
-                className="input-soft"
-                required
-              >
-                <option value="">Selecione...</option>
-                {buildClientOptions(clientsTree)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Categoria *
-              </label>
-              <select
-                value={taskForm.categoryId}
-                onChange={(e) => setTaskForm({ ...taskForm, categoryId: e.target.value })}
-                className="input-soft"
-                required
-              >
-                <option value="">Selecione...</option>
-                {categories.map((c) => (
-                  <option key={c._id} value={c._id}>{c.icon} {c.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Título *
-            </label>
-            <input
-              type="text"
-              value={taskForm.title}
-              onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-              className="input-soft"
-              placeholder="Título da tarefa"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Descrição *
-            </label>
-            <textarea
-              value={taskForm.description}
-              onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
-              className="input-soft"
-              rows={3}
-              placeholder="Descreva a tarefa..."
-              required
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Custo *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={taskForm.cost}
-                onChange={(e) => setTaskForm({ ...taskForm, cost: parseFloat(e.target.value) || 0 })}
-                className="input-soft"
-                required
-              />
-            </div>
-            {editingTask && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Status
-                </label>
-                <select
-                  value={taskForm.status}
-                  onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}
-                  className="input-soft"
-                >
-                  <option value="pending">Pendente</option>
-                  <option value="in_progress">Em Andamento</option>
-                  <option value="completed">Concluída</option>
-                  <option value="cancelled">Cancelada</option>
-                </select>
-              </div>
-            )}
-          </div>
-
-          {!editingTask && (
-            <div>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={taskForm.sendToAsana}
-                  onChange={(e) => setTaskForm({ ...taskForm, sendToAsana: e.target.checked })}
-                  className="rounded border-gray-300"
-                />
-                <span className="text-sm text-gray-600 dark:text-gray-400">Enviar para Asana</span>
-              </label>
-            </div>
-          )}
-
-          {!editingTask && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Anexos para Asana (máx. 5 arquivos, 10MB cada)
-              </label>
-              <input
-                type="file"
-                multiple
-                disabled={!taskForm.sendToAsana}
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  if (files.length > 5) {
-                    alert('Máximo de 5 arquivos permitidos');
-                    return;
-                  }
-                  const oversized = files.find(f => f.size > 10 * 1024 * 1024);
-                  if (oversized) {
-                    alert(`Arquivo ${oversized.name} excede 10MB`);
-                    return;
-                  }
-                  setTaskAttachments(files);
-                }}
-                className="input-soft file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              {!taskForm.sendToAsana && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Marque "Enviar para Asana" para habilitar anexos
-                </p>
-              )}
-              {taskAttachments.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {taskAttachments.map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                      <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
-                      <button
-                        type="button"
-                        onClick={() => setTaskAttachments(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Observações
-            </label>
-            <textarea
-              value={taskForm.observations}
-              onChange={(e) => setTaskForm({ ...taskForm, observations: e.target.value })}
-              className="input-soft"
-              rows={2}
-              placeholder="Observações adicionais..."
-            />
-          </div>
-          
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={() => setShowTaskModal(false)}
-              className="btn-secondary"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={savingTask}
-              className="btn-primary"
-            >
-              {savingTask ? 'Salvando...' : 'Salvar Tarefa'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClose={handleTaskModalClose}
+        onSuccess={handleTaskModalSuccess}
+        editingTask={editingTask}
+        clientsTree={clientsTree}
+        categories={categories}
+      />
     </div>
   );
 }

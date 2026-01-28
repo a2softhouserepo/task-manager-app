@@ -7,6 +7,7 @@ import Client from '@/models/Client';
 import Category from '@/models/Category';
 import { z } from 'zod';
 import { logAudit, createAuditSnapshot, logAuthFailure } from '@/lib/audit';
+import { sendTaskToAsana } from '@/lib/email';
 
 const updateTaskSchema = z.object({
   requestDate: z.string().or(z.date()).optional(),
@@ -18,6 +19,7 @@ const updateTaskSchema = z.object({
   cost: z.number().min(0, 'Custo não pode ser negativo').optional(),
   observations: z.string().max(2000, 'Observações muito longas').optional(),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
+  sendToAsana: z.boolean().optional(),
 });
 
 export async function GET(
@@ -133,6 +135,33 @@ export async function PUT(
     Object.assign(task, updates);
     task.updatedAt = new Date();
     await task.save();
+
+    // Re-send to Asana if requested
+    if (validationResult.data.sendToAsana) {
+      // Get current client and category names
+      const currentClient = await Client.findById(task.clientId);
+      const currentCategory = await Category.findById(task.categoryId);
+      
+      const clientName = currentClient?.name || task.clientName || 'Cliente não especificado';
+      const categoryName = currentCategory?.name || task.categoryName || 'Categoria não especificada';
+      
+      const asanaResult = await sendTaskToAsana({
+        title: task.title,
+        description: task.description,
+        clientName,
+        category: categoryName,
+        dueDate: task.deliveryDate ? new Date(task.deliveryDate) : undefined,
+        cost: task.cost,
+      });
+
+      if (asanaResult.success) {
+        task.asanaEmailSent = true;
+        task.asanaEmailError = undefined;
+      } else {
+        task.asanaEmailError = asanaResult.error;
+      }
+      await task.save();
+    }
 
     await logAudit({
       action: 'UPDATE',

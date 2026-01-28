@@ -2,11 +2,12 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, FormEvent, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
 import Modal from '@/components/Modal';
+import TaskModal from '@/components/TaskModal';
 
 interface Task {
   _id: string;
@@ -62,7 +63,6 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
@@ -106,21 +106,6 @@ export default function TasksPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [pdfUseCustomPeriod, setPdfUseCustomPeriod] = useState(false);
-  
-  // Form
-  const [form, setForm] = useState({
-    requestDate: new Date().toISOString().split('T')[0],
-    clientId: '',
-    categoryId: '',
-    title: '',
-    description: '',
-    deliveryDate: '',
-    cost: 0,
-    observations: '',
-    status: 'pending',
-    sendToAsana: true,
-  });
-  const [attachments, setAttachments] = useState<File[]>([]);
 
   const userRole = (session?.user as any)?.role || 'user';
   const userId = (session?.user as any)?.id;
@@ -304,37 +289,11 @@ export default function TasksPage() {
 
   const openNewModal = () => {
     setEditingTask(null);
-    setForm({
-      requestDate: new Date().toISOString().split('T')[0],
-      clientId: '',
-      categoryId: '',
-      title: '',
-      description: '',
-      deliveryDate: '',
-      cost: 0,
-      observations: '',
-      status: 'pending',
-      sendToAsana: true,
-    });
-    setAttachments([]);
     setShowModal(true);
   };
 
   const openEditModal = (task: Task) => {
     setEditingTask(task);
-    setForm({
-      requestDate: task.requestDate.split('T')[0],
-      clientId: task.clientId,
-      categoryId: task.categoryId,
-      title: task.title,
-      description: task.description,
-      deliveryDate: task.deliveryDate ? task.deliveryDate.split('T')[0] : '',
-      cost: task.cost,
-      observations: task.observations || '',
-      status: task.status,
-      sendToAsana: false,
-    });
-    setAttachments([]);
     setShowModal(true);
   };
 
@@ -343,69 +302,13 @@ export default function TasksPage() {
     setShowViewModal(true);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    
-    try {
-      const url = editingTask 
-        ? `/api/tasks/${editingTask._id}` 
-        : '/api/tasks';
-      
-      // Se não está editando e tem anexos, usa FormData
-      if (!editingTask && attachments.length > 0 && form.sendToAsana) {
-        const formData = new FormData();
-        
-        // Adiciona todos os campos do formulário
-        Object.entries(form).forEach(([key, value]) => {
-          formData.append(key, value.toString());
-        });
-        formData.append('cost', Number(form.cost).toString());
-        
-        // Adiciona os arquivos
-        attachments.forEach((file) => {
-          formData.append('attachments', file);
-        });
-        
-        const res = await fetch(url, {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (res.ok) {
-          setShowModal(false);
-          setAttachments([]);
-          loadTasks();
-        } else {
-          const data = await res.json();
-          alert(data.error || 'Erro ao salvar tarefa');
-        }
-      } else {
-        // Usa JSON normal para edição ou quando não há anexos
-        const res = await fetch(url, {
-          method: editingTask ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...form,
-            cost: Number(form.cost),
-          }),
-        });
-        
-        if (res.ok) {
-          setShowModal(false);
-          setAttachments([]);
-          loadTasks();
-        } else {
-          const data = await res.json();
-          alert(data.error || 'Erro ao salvar tarefa');
-        }
-      }
-    } catch (error) {
-      console.error('Error saving task:', error);
-      alert('Erro ao salvar tarefa');
-    } finally {
-      setSaving(false);
-    }
+  const handleTaskModalClose = () => {
+    setShowModal(false);
+    setEditingTask(null);
+  };
+
+  const handleTaskModalSuccess = () => {
+    loadTasks();
   };
 
   const handleDelete = async (id: string) => {
@@ -1067,220 +970,15 @@ export default function TasksPage() {
           )}
         </Modal>
 
-        {/* Modal de Edição */}
-        <Modal
+        {/* Modal de Nova/Edição de Tarefa */}
+        <TaskModal
           isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          title={editingTask ? 'Editar Tarefa' : 'Nova Tarefa'}
-          size="lg"
-        >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Data de Solicitação *
-                </label>
-                <input
-                  type="date"
-                  value={form.requestDate}
-                  onChange={(e) => setForm({ ...form, requestDate: e.target.value })}
-                  className="input-soft"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Data de Entrega
-                </label>
-                <input
-                  type="date"
-                  value={form.deliveryDate}
-                  onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })}
-                  className="input-soft"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Cliente *
-                </label>
-                <select
-                  value={form.clientId}
-                  onChange={(e) => setForm({ ...form, clientId: e.target.value })}
-                  className="input-soft"
-                  required
-                >
-                  <option value="">Selecione...</option>
-                  {buildClientOptions(clientsTree)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Categoria *
-                </label>
-                <select
-                  value={form.categoryId}
-                  onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                  className="input-soft"
-                  required
-                >
-                  <option value="">Selecione...</option>
-                  {categories.map((c) => (
-                    <option key={c._id} value={c._id}>{c.icon} {c.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Título *
-              </label>
-              <input
-                type="text"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="input-soft"
-                placeholder="Título da tarefa"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Descrição *
-              </label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="input-soft"
-                rows={3}
-                placeholder="Descreva a tarefa..."
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Custo (Esforço) *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.cost}
-                  onChange={(e) => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })}
-                  className="input-soft"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Status
-                </label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="input-soft"
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.sendToAsana}
-                    onChange={(e) => setForm({ ...form, sendToAsana: e.target.checked })}
-                    className="rounded border-gray-300"
-                  />
-                  <span className="text-sm text-muted-foreground">Enviar Asana</span>
-                </label>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Anexos para Asana (máx. 5 arquivos, 10MB cada)
-              </label>
-              <input
-                type="file"
-                multiple
-                disabled={!form.sendToAsana}
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  if (files.length > 5) {
-                    alert('Máximo de 5 arquivos permitidos');
-                    return;
-                  }
-                  const oversized = files.find(f => f.size > 10 * 1024 * 1024);
-                  if (oversized) {
-                    alert(`Arquivo ${oversized.name} excede 10MB`);
-                    return;
-                  }
-                  setAttachments(files);
-                }}
-                className="input-soft file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              {!form.sendToAsana && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Marque "Enviar Asana" para habilitar anexos
-                </p>
-              )}
-              {attachments.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {attachments.map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
-                      <button
-                        type="button"
-                        onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Observações
-              </label>
-              <textarea
-                value={form.observations}
-                onChange={(e) => setForm({ ...form, observations: e.target.value })}
-                className="input-soft"
-                rows={2}
-                placeholder="Observações adicionais..."
-              />
-            </div>
-            
-            <div className="flex justify-end gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="btn-secondary"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="btn-primary"
-              >
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+          onClose={handleTaskModalClose}
+          onSuccess={handleTaskModalSuccess}
+          editingTask={editingTask}
+          clientsTree={clientsTree}
+          categories={categories}
+        />
 
         {/* Modal de Exportação PDF */}
         <Modal
