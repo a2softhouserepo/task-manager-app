@@ -891,11 +891,11 @@ export default function TasksPage() {
                         </div>
                       </td>
                     ))}
-                    <td className={`text-sm whitespace-nowrap font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <div className="max-w-xs truncate" title={task.title}>
-                        {task.title.length > 35 ? `${task.title.substring(0, 35)}...` : task.title}
+                    <td className={`text-sm font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                      <div className="flex items-center gap-2">
+                        <span>{task.title}</span>
                         {task.asanaEmailSent && (
-                          <span className="ml-2 text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
+                          <span className="text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
                             📧
                           </span>
                         )}
