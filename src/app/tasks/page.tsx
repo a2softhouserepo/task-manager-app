@@ -24,7 +24,8 @@ interface Task {
   cost: number;
   observations?: string;
   status: string;
-  asanaEmailSent: boolean;
+  asanaSynced: boolean;
+  asanaTaskGid?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -797,7 +798,7 @@ export default function TasksPage() {
                     <td className={`text-sm font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <div className="flex items-center gap-2">
                         <span>{task.title}</span>
-                        {task.asanaEmailSent && (
+                        {task.asanaSynced && (
                           <span className="text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
                             📧
                           </span>
@@ -937,7 +938,7 @@ export default function TasksPage() {
               {/* Status do Asana */}
               <div className="flex items-center gap-2">
                 <label className="block text-sm font-medium text-muted-foreground">Status do Asana:</label>
-                {viewingTask.asanaEmailSent ? (
+                {viewingTask.asanaSynced ? (
                   <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

@@ -7,7 +7,7 @@ import Client from '@/models/Client';
 import Category from '@/models/Category';
 import { z } from 'zod';
 import { logAudit, createAuditSnapshot, logAuthFailure } from '@/lib/audit';
-import { sendTaskToAsana } from '@/lib/email';
+import { syncTaskToAsana, isAsanaConfigured, deleteAsanaTask } from '@/lib/asana';
 
 const updateTaskSchema = z.object({
   requestDate: z.string().or(z.date()).optional(),
@@ -134,10 +134,15 @@ export async function PUT(
 
     Object.assign(task, updates);
     task.updatedAt = new Date();
+    
+    // Capture plain text values BEFORE saving (save will encrypt them)
+    const plainTitle = task.title;
+    const plainDescription = task.description;
+    
     await task.save();
 
-    // Re-send to Asana if requested
-    if (validationResult.data.sendToAsana) {
+    // Sync to Asana if requested and configured
+    if (validationResult.data.sendToAsana && isAsanaConfigured()) {
       // Get current client and category names
       const currentClient = await Client.findById(task.clientId);
       const currentCategory = await Category.findById(task.categoryId);
@@ -145,20 +150,24 @@ export async function PUT(
       const clientName = currentClient?.name || task.clientName || 'Cliente não especificado';
       const categoryName = currentCategory?.name || task.categoryName || 'Categoria não especificada';
       
-      const asanaResult = await sendTaskToAsana({
-        title: task.title,
-        description: task.description,
+      // Use existing Asana task GID if available (update), otherwise create new
+      // Use plain text values captured before save (not encrypted ones)
+      const asanaResult = await syncTaskToAsana({
+        title: plainTitle,
+        description: plainDescription,
         clientName,
         category: categoryName,
         dueDate: task.deliveryDate ? new Date(task.deliveryDate) : undefined,
         cost: task.cost,
-      });
+        status: task.status,
+      }, task.asanaTaskGid);
 
       if (asanaResult.success) {
-        task.asanaEmailSent = true;
-        task.asanaEmailError = undefined;
+        task.asanaSynced = true;
+        task.asanaTaskGid = asanaResult.taskGid;
+        task.asanaSyncError = undefined;
       } else {
-        task.asanaEmailError = asanaResult.error;
+        task.asanaSyncError = asanaResult.error;
       }
       await task.save();
     }
@@ -239,6 +248,11 @@ export async function DELETE(
       resourceId: id,
       details: { deleted: createAuditSnapshot(task.toObject()) },
     });
+
+    // Mark as completed in Asana if synced
+    if (task.asanaTaskGid && isAsanaConfigured()) {
+      await deleteAsanaTask(task.asanaTaskGid);
+    }
 
     await Task.findByIdAndDelete(id);
 

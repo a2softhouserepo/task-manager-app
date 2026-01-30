@@ -32,7 +32,8 @@ interface Task {
   cost: number;
   observations?: string;
   status: string;
-  asanaEmailSent?: boolean;
+  asanaSynced?: boolean;
+  asanaTaskGid?: string;
 }
 
 interface TaskFormData {
@@ -103,7 +104,7 @@ export default function TaskModal({
           cost: editingTask.cost,
           observations: editingTask.observations || '',
           status: editingTask.status,
-          sendToAsana: false, // Default to false when editing
+          sendToAsana: true, // Default to true when editing
         });
       } else {
         setForm(getInitialFormState());

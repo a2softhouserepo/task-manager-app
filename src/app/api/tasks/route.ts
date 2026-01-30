@@ -7,7 +7,7 @@ import Client from '@/models/Client';
 import Category from '@/models/Category';
 import { z } from 'zod';
 import { logAudit, createAuditSnapshot } from '@/lib/audit';
-import { sendTaskToAsana } from '@/lib/email';
+import { syncTaskToAsana, isAsanaConfigured } from '@/lib/asana';
 
 /**
  * GET /api/tasks - Lista tarefas com filtros e paginação
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     // Query principal com otimizações
     let tasksQuery = Task.find(query)
       .sort({ requestDate: -1 })
-      .select('requestDate clientId clientName categoryId categoryName categoryIcon categoryColor title description deliveryDate cost observations status asanaEmailSent createdBy createdAt');
+      .select('requestDate clientId clientName categoryId categoryName categoryIcon categoryColor title description deliveryDate cost observations status asanaTaskGid asanaSynced createdBy createdAt');
     
     // Aplicar paginação se solicitada
     if (paginate) {
@@ -349,27 +349,28 @@ export async function POST(request: NextRequest) {
       cost,
       observations: observations || undefined,
       status: status || 'pending',
-      asanaEmailSent: false,
+      asanaSynced: false,
       userId: (session.user as any).id,
       createdBy: (session.user as any).id,
     });
 
-    // Enviar para Asana se solicitado
-    if (sendToAsana !== false) {
-      const asanaResult = await sendTaskToAsana({
+    // Sync to Asana if requested and configured
+    if (sendToAsana !== false && isAsanaConfigured()) {
+      const asanaResult = await syncTaskToAsana({
         title,
         description,
         clientName: client.name,
         category: category.name,
         dueDate: deliveryDate ? new Date(deliveryDate) : undefined,
         cost,
-        attachments: attachments.length > 0 ? attachments : undefined,
+        status: status || 'pending',
       });
 
       if (asanaResult.success) {
-        task.asanaEmailSent = true;
+        task.asanaSynced = true;
+        task.asanaTaskGid = asanaResult.taskGid;
       } else {
-        task.asanaEmailError = asanaResult.error;
+        task.asanaSyncError = asanaResult.error;
       }
       await task.save();
     }
