@@ -7,7 +7,8 @@ import Client from '@/models/Client';
 import Category from '@/models/Category';
 import { z } from 'zod';
 import { logAudit, createAuditSnapshot } from '@/lib/audit';
-import { syncTaskToAsana, isAsanaConfigured } from '@/lib/asana';
+import { syncTaskToAsana, isAsanaConfigured, uploadAsanaAttachments, AsanaAttachmentData } from '@/lib/asana';
+import { getConfig } from '@/models/SystemConfig';
 
 /**
  * GET /api/tasks - Lista tarefas com filtros e paginação
@@ -261,10 +262,14 @@ export async function POST(request: NextRequest) {
         sendToAsana: formData.get('sendToAsana') === 'true',
       };
 
+      // Buscar configurações de limite de arquivos
+      const allowedTypes = await getConfig<string[]>('asana_allowed_file_types', ['.zip']);
+      const maxSizeMB = await getConfig<number>('asana_max_file_size_mb', 10);
+      const maxFiles = await getConfig<number>('asana_max_files_per_task', 5);
+      const maxSize = maxSizeMB * 1024 * 1024;
+      
       // Extrai e valida os arquivos
       const files = formData.getAll('attachments');
-      const maxFiles = 5;
-      const maxSize = 10 * 1024 * 1024; // 10MB
       
       if (files.length > maxFiles) {
         return NextResponse.json(
@@ -275,9 +280,19 @@ export async function POST(request: NextRequest) {
       
       for (const file of files) {
         if (file instanceof File) {
+          // Validar tamanho
           if (file.size > maxSize) {
             return NextResponse.json(
-              { error: `Arquivo ${file.name} excede o limite de 10MB` },
+              { error: `Arquivo ${file.name} excede o limite de ${maxSizeMB}MB` },
+              { status: 400 }
+            );
+          }
+          
+          // Validar tipo de arquivo (extensão)
+          const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+          if (allowedTypes.length > 0 && !allowedTypes.includes(fileExtension)) {
+            return NextResponse.json(
+              { error: `Tipo de arquivo não permitido: ${file.name}. Permitidos: ${allowedTypes.join(', ')}` },
               { status: 400 }
             );
           }
@@ -287,7 +302,7 @@ export async function POST(request: NextRequest) {
           attachments.push({
             filename: file.name,
             content: buffer,
-            contentType: file.type,
+            contentType: file.type || 'application/octet-stream',
           });
         }
       }
@@ -355,6 +370,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Sync to Asana if requested and configured
+    let attachmentErrors: string[] = [];
+    
     if (sendToAsana !== false && isAsanaConfigured()) {
       const asanaResult = await syncTaskToAsana({
         title,
@@ -369,6 +386,27 @@ export async function POST(request: NextRequest) {
       if (asanaResult.success) {
         task.asanaSynced = true;
         task.asanaTaskGid = asanaResult.taskGid;
+        
+        // Upload attachments if task was created successfully and has attachments
+        if (asanaResult.taskGid && attachments.length > 0) {
+          console.log(`[ASANA] Uploading ${attachments.length} attachment(s) to task ${asanaResult.taskGid}...`);
+          
+          const uploadResults = await uploadAsanaAttachments(
+            asanaResult.taskGid,
+            attachments as AsanaAttachmentData[]
+          );
+          
+          if (uploadResults.hasErrors) {
+            attachmentErrors = uploadResults.failed.map(
+              (f) => `${f.filename}: ${f.error}`
+            );
+            console.warn('[ASANA] Some attachments failed to upload:', attachmentErrors);
+          }
+          
+          if (uploadResults.successful.length > 0) {
+            console.log(`[ASANA] Successfully uploaded ${uploadResults.successful.length} attachment(s)`);
+          }
+        }
       } else {
         task.asanaSyncError = asanaResult.error;
       }
@@ -382,7 +420,15 @@ export async function POST(request: NextRequest) {
       details: createAuditSnapshot(task.toObject()),
     });
 
-    return NextResponse.json({ task }, { status: 201 });
+    // Retornar resposta com informações de erros de anexos se houver
+    const response: any = { task };
+    
+    if (attachmentErrors.length > 0) {
+      response.attachmentErrors = attachmentErrors;
+      response.warning = `Tarefa criada, mas ${attachmentErrors.length} anexo(s) falharam ao enviar para o Asana`;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (error: any) {
     console.error('Error creating task:', error);
     return NextResponse.json(

@@ -49,6 +49,12 @@ interface TaskFormData {
   sendToAsana: boolean;
 }
 
+interface AsanaConfig {
+  allowedTypes: string[];
+  maxSizeMB: number;
+  maxFiles: number;
+}
+
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -89,6 +95,33 @@ export default function TaskModal({
   const [form, setForm] = useState<TaskFormData>(getInitialFormState());
   const [attachments, setAttachments] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
+  const [attachmentWarning, setAttachmentWarning] = useState<string | null>(null);
+  const [asanaConfig, setAsanaConfig] = useState<AsanaConfig>({
+    allowedTypes: ['.zip'],
+    maxSizeMB: 10,
+    maxFiles: 5,
+  });
+
+  // Fetch Asana config on mount
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/settings/asana');
+        if (res.ok) {
+          const data = await res.json();
+          setAsanaConfig({
+            allowedTypes: data.allowedTypes || ['.zip'],
+            maxSizeMB: data.maxSizeMB || 10,
+            maxFiles: data.maxFiles || 5,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching Asana config:', error);
+      }
+    };
+    fetchConfig();
+  }, []);
 
   // Reset form when modal opens/closes or editingTask changes
   useEffect(() => {
@@ -110,6 +143,7 @@ export default function TaskModal({
         setForm(getInitialFormState());
       }
       setAttachments([]);
+      setAttachmentWarning(null);
     }
   }, [isOpen, editingTask]);
 
@@ -136,6 +170,7 @@ export default function TaskModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setAttachmentWarning(null);
     
     try {
       const url = editingTask 
@@ -144,13 +179,17 @@ export default function TaskModal({
       
       let res: Response;
       
-      // Se não está editando e tem anexos e vai enviar para Asana, usa FormData
-      if (!editingTask && attachments.length > 0 && form.sendToAsana) {
+      // Usar FormData quando há anexos e vai enviar para Asana
+      if (attachments.length > 0 && form.sendToAsana) {
+        setUploadingAttachments(true);
+        
         const formData = new FormData();
         
         // Adiciona todos os campos do formulário
         Object.entries(form).forEach(([key, value]) => {
-          formData.append(key, value.toString());
+          if (value !== undefined && value !== null && value !== '') {
+            formData.append(key, value.toString());
+          }
         });
         formData.append('cost', Number(form.cost).toString());
         
@@ -160,11 +199,13 @@ export default function TaskModal({
         });
         
         res = await fetch(url, {
-          method: 'POST',
+          method: editingTask ? 'PUT' : 'POST',
           body: formData,
         });
+        
+        setUploadingAttachments(false);
       } else {
-        // Usa JSON normal para edição ou quando não há anexos
+        // Usa JSON normal quando não há anexos
         res = await fetch(url, {
           method: editingTask ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -175,11 +216,22 @@ export default function TaskModal({
         });
       }
       
+      const data = await res.json();
+      
       if (res.ok) {
-        onClose();
-        onSuccess();
+        // Verificar se houve erros nos anexos
+        if (data.attachmentErrors && data.attachmentErrors.length > 0) {
+          setAttachmentWarning(data.warning || `Alguns anexos falharam: ${data.attachmentErrors.join(', ')}`);
+          // Não fechar o modal imediatamente para mostrar o aviso
+          setTimeout(() => {
+            onClose();
+            onSuccess();
+          }, 3000);
+        } else {
+          onClose();
+          onSuccess();
+        }
       } else {
-        const data = await res.json();
         alert(data.error || 'Erro ao salvar tarefa');
       }
     } catch (error) {
@@ -187,20 +239,38 @@ export default function TaskModal({
       alert('Erro ao salvar tarefa');
     } finally {
       setSaving(false);
+      setUploadingAttachments(false);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length > 5) {
-      alert('Máximo de 5 arquivos permitidos');
+    
+    // Validar quantidade
+    if (files.length > asanaConfig.maxFiles) {
+      alert(`Máximo de ${asanaConfig.maxFiles} arquivos permitidos`);
       return;
     }
-    const oversized = files.find(f => f.size > 10 * 1024 * 1024);
+    
+    // Validar tamanho
+    const maxSizeBytes = asanaConfig.maxSizeMB * 1024 * 1024;
+    const oversized = files.find(f => f.size > maxSizeBytes);
     if (oversized) {
-      alert(`Arquivo ${oversized.name} excede 10MB`);
+      alert(`Arquivo ${oversized.name} excede ${asanaConfig.maxSizeMB}MB`);
       return;
     }
+    
+    // Validar tipo de arquivo (extensão)
+    if (asanaConfig.allowedTypes.length > 0) {
+      for (const file of files) {
+        const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+        if (!asanaConfig.allowedTypes.includes(ext)) {
+          alert(`Tipo de arquivo não permitido: ${file.name}\nPermitidos: ${asanaConfig.allowedTypes.join(', ')}`);
+          return;
+        }
+      }
+    }
+    
     setAttachments(files);
   };
 
@@ -352,42 +422,68 @@ export default function TaskModal({
           </div>
         </div>
         
-        {/* Anexos (apenas para novas tarefas) */}
-        {!editingTask && (
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Anexos para Asana (máx. 5 arquivos, 10MB cada)
-            </label>
-            <input
-              type="file"
-              multiple
-              disabled={!form.sendToAsana}
-              onChange={handleFileChange}
-              className="input-soft file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            {!form.sendToAsana && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Marque "Enviar Asana" para habilitar anexos
-              </p>
-            )}
-            {attachments.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {attachments.map((file, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(idx)}
-                      className="text-red-600 hover:text-red-700 dark:text-red-400"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Anexos para Asana */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            Anexos para Asana
+            <span className="text-xs text-muted-foreground ml-2">
+              (máx. {asanaConfig.maxFiles} arquivos, {asanaConfig.maxSizeMB}MB cada, tipos: {asanaConfig.allowedTypes.join(', ')})
+            </span>
+          </label>
+          <input
+            type="file"
+            multiple
+            accept={asanaConfig.allowedTypes.join(',')}
+            disabled={!form.sendToAsana || saving}
+            onChange={handleFileChange}
+            className="input-soft file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          {!form.sendToAsana && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Marque &quot;{editingTask ? 'Re-enviar' : 'Enviar'} Asana&quot; para habilitar anexos
+            </p>
+          )}
+          {editingTask && editingTask.asanaTaskGid && form.sendToAsana && (
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              ℹ️ Novos anexos serão adicionados à tarefa existente no Asana
+            </p>
+          )}
+          {attachments.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {attachments.map((file, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(idx)}
+                    className="text-red-600 hover:text-red-700 dark:text-red-400"
+                    disabled={saving}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Feedback de upload em andamento */}
+          {uploadingAttachments && (
+            <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Enviando anexos para o Asana...
+            </div>
+          )}
+          
+          {/* Aviso de erros nos anexos */}
+          {attachmentWarning && (
+            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-sm text-yellow-700 dark:text-yellow-300">
+              ⚠️ {attachmentWarning}
+            </div>
+          )}
+        </div>
         
         {/* Observações */}
         <div>

@@ -7,7 +7,8 @@ import Client from '@/models/Client';
 import Category from '@/models/Category';
 import { z } from 'zod';
 import { logAudit, createAuditSnapshot, logAuthFailure } from '@/lib/audit';
-import { syncTaskToAsana, isAsanaConfigured, deleteAsanaTask } from '@/lib/asana';
+import { syncTaskToAsana, isAsanaConfigured, deleteAsanaTask, uploadAsanaAttachments, AsanaAttachmentData } from '@/lib/asana';
+import { getConfig } from '@/models/SystemConfig';
 
 const updateTaskSchema = z.object({
   requestDate: z.string().or(z.date()).optional(),
@@ -85,7 +86,79 @@ export async function PUT(
       );
     }
 
-    const body = await request.json();
+    const contentType = request.headers.get('content-type') || '';
+    let body: any;
+    let attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+
+    // Verifica se é multipart/form-data (com arquivos)
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      
+      // Extrai os campos do formulário
+      body = {
+        requestDate: formData.get('requestDate') || undefined,
+        clientId: formData.get('clientId') || undefined,
+        categoryId: formData.get('categoryId') || undefined,
+        title: formData.get('title') || undefined,
+        description: formData.get('description') || undefined,
+        deliveryDate: formData.get('deliveryDate') || undefined,
+        cost: formData.has('cost') ? parseFloat(formData.get('cost') as string) : undefined,
+        observations: formData.get('observations') || undefined,
+        status: formData.get('status') || undefined,
+        sendToAsana: formData.get('sendToAsana') === 'true',
+      };
+      
+      // Remove campos undefined
+      Object.keys(body).forEach(key => body[key] === undefined && delete body[key]);
+
+      // Buscar configurações de limite de arquivos
+      const allowedTypes = await getConfig<string[]>('asana_allowed_file_types', ['.zip']);
+      const maxSizeMB = await getConfig<number>('asana_max_file_size_mb', 10);
+      const maxFiles = await getConfig<number>('asana_max_files_per_task', 5);
+      const maxSize = maxSizeMB * 1024 * 1024;
+      
+      // Extrai e valida os arquivos
+      const files = formData.getAll('attachments');
+      
+      if (files.length > maxFiles) {
+        return NextResponse.json(
+          { error: `Máximo de ${maxFiles} arquivos permitidos` },
+          { status: 400 }
+        );
+      }
+      
+      for (const file of files) {
+        if (file instanceof File && file.size > 0) {
+          // Validar tamanho
+          if (file.size > maxSize) {
+            return NextResponse.json(
+              { error: `Arquivo ${file.name} excede o limite de ${maxSizeMB}MB` },
+              { status: 400 }
+            );
+          }
+          
+          // Validar tipo de arquivo (extensão)
+          const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+          if (allowedTypes.length > 0 && !allowedTypes.includes(fileExtension)) {
+            return NextResponse.json(
+              { error: `Tipo de arquivo não permitido: ${file.name}. Permitidos: ${allowedTypes.join(', ')}` },
+              { status: 400 }
+            );
+          }
+          
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          attachments.push({
+            filename: file.name,
+            content: buffer,
+            contentType: file.type || 'application/octet-stream',
+          });
+        }
+      }
+    } else {
+      // JSON normal
+      body = await request.json();
+    }
     
     const validationResult = updateTaskSchema.safeParse(body);
     if (!validationResult.success) {
@@ -142,6 +215,9 @@ export async function PUT(
     await task.save();
 
     // Sync to Asana if requested and configured
+    // Sync to Asana if requested and configured
+    let attachmentErrors: string[] = [];
+    
     if (validationResult.data.sendToAsana && isAsanaConfigured()) {
       // Get current client and category names
       const currentClient = await Client.findById(task.clientId);
@@ -166,6 +242,27 @@ export async function PUT(
         task.asanaSynced = true;
         task.asanaTaskGid = asanaResult.taskGid;
         task.asanaSyncError = undefined;
+        
+        // Upload attachments if we have a task GID and attachments
+        if (asanaResult.taskGid && attachments.length > 0) {
+          console.log(`[ASANA] Uploading ${attachments.length} attachment(s) to task ${asanaResult.taskGid}...`);
+          
+          const uploadResults = await uploadAsanaAttachments(
+            asanaResult.taskGid,
+            attachments as AsanaAttachmentData[]
+          );
+          
+          if (uploadResults.hasErrors) {
+            attachmentErrors = uploadResults.failed.map(
+              (f) => `${f.filename}: ${f.error}`
+            );
+            console.warn('[ASANA] Some attachments failed to upload:', attachmentErrors);
+          }
+          
+          if (uploadResults.successful.length > 0) {
+            console.log(`[ASANA] Successfully uploaded ${uploadResults.successful.length} attachment(s)`);
+          }
+        }
       } else {
         task.asanaSyncError = asanaResult.error;
       }
@@ -183,7 +280,15 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({ task });
+    // Retornar resposta com informações de erros de anexos se houver
+    const response: any = { task };
+    
+    if (attachmentErrors.length > 0) {
+      response.attachmentErrors = attachmentErrors;
+      response.warning = `Tarefa atualizada, mas ${attachmentErrors.length} anexo(s) falharam ao enviar para o Asana`;
+    }
+
+    return NextResponse.json(response);
   } catch (error: any) {
     console.error('Error updating task:', error);
     return NextResponse.json(

@@ -9,7 +9,7 @@ interface SystemConfig {
   key: string;
   value: any;
   type: 'string' | 'number' | 'boolean' | 'json';
-  category: 'backup' | 'email' | 'security' | 'general';
+  category: 'backup' | 'email' | 'security' | 'general' | 'asana';
   label: string;
   description?: string;
   options?: string[];
@@ -22,6 +22,7 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
   security: { label: 'Segurança', icon: '🔒', color: 'red' },
   email: { label: 'E-mail', icon: '📧', color: 'green' },
   general: { label: 'Geral', icon: '⚙️', color: 'gray' },
+  asana: { label: 'Asana', icon: '📋', color: 'purple' },
 };
 
 const CONFIG_CACHE_KEY = 'system_config_cache';
@@ -200,6 +201,57 @@ export default function SettingsPage() {
             onChange={(e) => handleValueChange(config.key, parseInt(e.target.value) || 0)}
             className={`input-soft w-32 ${hasChange ? 'ring-2 ring-blue-500' : ''}`}
           />
+        );
+
+      case 'json':
+        // Para arrays de strings (como tipos de arquivo)
+        const arrayValue = Array.isArray(value) ? value : [];
+        return (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {arrayValue.map((item: string, idx: number) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-sm"
+                >
+                  {item}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newArray = arrayValue.filter((_: string, i: number) => i !== idx);
+                      handleValueChange(config.key, newArray);
+                    }}
+                    className="ml-1 text-purple-500 hover:text-purple-700 dark:hover:text-purple-200"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Adicionar (ex: .pdf)"
+                className={`input-soft text-sm ${hasChange ? 'ring-2 ring-blue-500' : ''}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const input = e.target as HTMLInputElement;
+                    const newValue = input.value.trim().toLowerCase();
+                    if (newValue && !arrayValue.includes(newValue)) {
+                      // Garantir que começa com ponto
+                      const formattedValue = newValue.startsWith('.') ? newValue : `.${newValue}`;
+                      handleValueChange(config.key, [...arrayValue, formattedValue]);
+                      input.value = '';
+                    }
+                  }
+                }}
+              />
+              <span className="text-xs text-muted-foreground self-center">
+                Enter para adicionar
+              </span>
+            </div>
+          </div>
         );
 
       default:
