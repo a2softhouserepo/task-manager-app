@@ -241,7 +241,9 @@ export async function POST(request: NextRequest) {
     // Check for handshake (initial webhook registration)
     const hookSecret = request.headers.get('x-hook-secret');
     if (hookSecret) {
-      console.log('[ASANA WEBHOOK] Handshake received, storing secret');
+      console.log('[ASANA WEBHOOK] Handshake received, storing secret', hookSecret);
+      console.log('[ASANA WEBHOOK] 🔐 Secret:', hookSecret);
+      console.log('[ASANA WEBHOOK] Add to .env.local: ASANA_WEBHOOK_SECRET=' + hookSecret);
       
       // Store the secret for future signature verification
       webhookSecret = hookSecret;
@@ -311,5 +313,6 @@ export async function GET() {
     status: 'ok',
     webhook: 'Asana webhook endpoint',
     hasSecret: !!webhookSecret || !!process.env.ASANA_WEBHOOK_SECRET,
+    secret: webhookSecret || null, // Expose for script to retrieve after registration
   });
 }

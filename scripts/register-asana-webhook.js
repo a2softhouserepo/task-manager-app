@@ -118,12 +118,21 @@ async function registerWebhook(targetUrl) {
     console.log(`   Target:   ${data.data.target}`);
     console.log(`   Active:   ${data.data.active}`);
     
-    console.log('\n📝 Salve o Webhook GID para referência futura:');
-    console.log(`   ASANA_WEBHOOK_GID=${data.data.gid}`);
+    // O X-Hook-Secret é retornado diretamente na resposta da API!
+    const webhookSecret = data['X-Hook-Secret'];
     
-    console.log('\n⚠️  IMPORTANTE: Salve o X-Hook-Secret que foi enviado durante o handshake');
-    console.log('   Ele é necessário para verificar a autenticidade dos eventos.');
-    console.log('   Adicione ao .env.local: ASANA_WEBHOOK_SECRET=<secret>');
+    if (webhookSecret) {
+      console.log('\n' + '═'.repeat(60));
+      console.log('🔐 WEBHOOK SECRET OBTIDO COM SUCESSO!');
+      console.log('═'.repeat(60));
+      console.log('\n📋 Adicione às variáveis de ambiente (Vercel/.env.local):\n');
+      console.log(`ASANA_WEBHOOK_SECRET=${webhookSecret}`);
+      console.log(`ASANA_WEBHOOK_GID=${data.data.gid}`);
+      console.log('\n' + '═'.repeat(60));
+    } else {
+      console.log('\n⚠️  X-Hook-Secret não retornado na resposta da API.');
+      console.log('   Verifique os logs do servidor para o valor do secret.');
+    }
 
   } catch (error) {
     console.error('❌ Erro ao registrar webhook:', error.message);
