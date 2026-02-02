@@ -41,7 +41,7 @@ const SystemConfigSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['backup', 'email', 'security', 'general'],
+      enum: ['backup', 'email', 'security', 'general', 'asana'],
       required: true,
       index: true,
     },
@@ -131,6 +131,35 @@ const defaultConfigs = [
     category: 'security',
     label: 'Modo Manutenção',
     description: 'Quando ativo, apenas rootAdmin pode acessar o sistema',
+    updatedBy: 'SYSTEM',
+  },
+  
+  // Asana Settings
+  {
+    key: 'asana_allowed_file_types',
+    value: ['.zip'],
+    type: 'json',
+    category: 'asana',
+    label: 'Tipos de Arquivo Permitidos',
+    description: 'Extensões de arquivo permitidas para upload no Asana (ex: .zip, .pdf, .png)',
+    updatedBy: 'SYSTEM',
+  },
+  {
+    key: 'asana_max_file_size_mb',
+    value: 10,
+    type: 'number',
+    category: 'asana',
+    label: 'Tamanho Máximo de Arquivo (MB)',
+    description: 'Tamanho máximo permitido por arquivo para upload no Asana',
+    updatedBy: 'SYSTEM',
+  },
+  {
+    key: 'asana_max_files_per_task',
+    value: 5,
+    type: 'number',
+    category: 'asana',
+    label: 'Máximo de Arquivos por Tarefa',
+    description: 'Quantidade máxima de arquivos que podem ser anexados a uma tarefa',
     updatedBy: 'SYSTEM',
   },
   

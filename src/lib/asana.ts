@@ -363,3 +363,146 @@ export function getAsanaConfigStatus(): {
     hasProjectGid: !!process.env.ASANA_PROJECT_GID,
   };
 }
+
+/**
+ * Interface for attachment data
+ */
+export interface AsanaAttachmentData {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
+/**
+ * Result of attachment upload operation
+ */
+export interface AsanaAttachmentResult {
+  success: boolean;
+  attachmentGid?: string;
+  filename?: string;
+  error?: string;
+}
+
+/**
+ * Upload a file attachment to an existing Asana task
+ * Uses multipart/form-data as required by Asana Attachments API
+ * 
+ * @param taskGid - The Asana task GID to attach the file to
+ * @param attachment - The attachment data (filename, content buffer, contentType)
+ * @returns Result with success status and attachment GID
+ */
+export async function uploadAsanaAttachment(
+  taskGid: string,
+  attachment: AsanaAttachmentData
+): Promise<AsanaAttachmentResult> {
+  try {
+    const accessToken = process.env.ASANA_ACCESS_TOKEN;
+    
+    if (!accessToken) {
+      return {
+        success: false,
+        filename: attachment.filename,
+        error: 'Asana API not configured. Set ASANA_ACCESS_TOKEN in environment.',
+      };
+    }
+
+    if (!taskGid) {
+      return {
+        success: false,
+        filename: attachment.filename,
+        error: 'Task GID is required to upload attachment.',
+      };
+    }
+
+    // Create FormData for multipart upload
+    const formData = new FormData();
+    formData.append('parent', taskGid);
+    
+    // Create a Blob from the buffer with the correct content type
+    // Convert Buffer to Uint8Array for proper Blob compatibility
+    const uint8Array = new Uint8Array(attachment.content);
+    const blob = new Blob([uint8Array], { type: attachment.contentType });
+    formData.append('file', blob, attachment.filename);
+
+    const url = `${ASANA_API_BASE}/attachments`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        // Note: Don't set Content-Type header - fetch will set it automatically with boundary for FormData
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const errorMessage = data.errors?.[0]?.message || `HTTP ${response.status}`;
+      console.error(`[ASANA] Failed to upload attachment "${attachment.filename}":`, errorMessage);
+      return {
+        success: false,
+        filename: attachment.filename,
+        error: errorMessage,
+      };
+    }
+
+    console.log(`[ASANA] Attachment "${attachment.filename}" uploaded successfully (GID: ${data.data?.gid})`);
+    
+    return {
+      success: true,
+      attachmentGid: data.data?.gid,
+      filename: attachment.filename,
+    };
+  } catch (error: any) {
+    console.error(`[ASANA] Error uploading attachment "${attachment.filename}":`, error);
+    
+    return {
+      success: false,
+      filename: attachment.filename,
+      error: error.message || 'Unknown error uploading attachment',
+    };
+  }
+}
+
+/**
+ * Upload multiple attachments to an Asana task sequentially
+ * Sequential upload avoids rate limiting issues
+ * 
+ * @param taskGid - The Asana task GID
+ * @param attachments - Array of attachment data
+ * @returns Array of results for each attachment
+ */
+export async function uploadAsanaAttachments(
+  taskGid: string,
+  attachments: AsanaAttachmentData[]
+): Promise<{
+  successful: AsanaAttachmentResult[];
+  failed: AsanaAttachmentResult[];
+  hasErrors: boolean;
+}> {
+  const successful: AsanaAttachmentResult[] = [];
+  const failed: AsanaAttachmentResult[] = [];
+
+  // Upload sequentially to avoid rate limiting
+  for (const attachment of attachments) {
+    const result = await uploadAsanaAttachment(taskGid, attachment);
+    
+    if (result.success) {
+      successful.push(result);
+    } else {
+      failed.push(result);
+    }
+    
+    // Small delay between uploads to be nice to Asana API (100ms)
+    if (attachments.indexOf(attachment) < attachments.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
+  return {
+    successful,
+    failed,
+    hasErrors: failed.length > 0,
+  };
+}

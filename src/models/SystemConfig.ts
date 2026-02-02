@@ -8,7 +8,7 @@ export interface ISystemConfig {
   key: string;
   value: any;
   type: 'string' | 'number' | 'boolean' | 'json';
-  category: 'backup' | 'email' | 'security' | 'general';
+  category: 'backup' | 'email' | 'security' | 'general' | 'asana';
   label: string;
   description?: string;
   options?: string[];
@@ -36,7 +36,7 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
     },
     category: {
       type: String,
-      enum: ['backup', 'email', 'security', 'general'],
+      enum: ['backup', 'email', 'security', 'general', 'asana'],
       required: true,
       index: true,
     },
