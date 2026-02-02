@@ -293,8 +293,8 @@ export async function updateAsanaTask(taskGid: string, task: AsanaTaskData): Pro
 }
 
 /**
- * Delete (complete and archive) a task in Asana
- * Note: Asana API doesn't allow permanent deletion, so we mark it as completed
+ * Delete a task in Asana
+ * Note: Deleted tasks are moved to trash but can be recovered by Asana workspace admins
  * 
  * @param taskGid - Asana task GID to delete
  * @returns Result with success status
@@ -310,10 +310,10 @@ export async function deleteAsanaTask(taskGid: string): Promise<AsanaResult> {
       };
     }
     
-    // Mark as completed (Asana doesn't support permanent deletion via API)
-    await asanaRequest(`/tasks/${taskGid}`, 'PUT', { completed: true });
+    // Delete the task (moves to trash)
+    await asanaRequest(`/tasks/${taskGid}`, 'DELETE');
     
-    console.log(`[ASANA] Task marked as completed (GID: ${taskGid})`);
+    console.log(`[ASANA] Task deleted (GID: ${taskGid})`);
     
     return { success: true, taskGid };
   } catch (error: any) {

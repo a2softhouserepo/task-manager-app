@@ -4,7 +4,7 @@ import { getToken } from 'next-auth/jwt';
 import { getCookieNames } from '@/lib/cookie-config';
 
 // Public routes that don't require authentication
-const publicRoutes = ['/login', '/api/auth'];
+const publicRoutes = ['/login', '/api/auth', '/api/asana/webhook'];
 
 // Routes that require admin or rootAdmin role
 const adminRoutes = ['/users', '/api/users'];

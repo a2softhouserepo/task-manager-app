@@ -188,8 +188,8 @@ ASANA_SECTION_CANCELLED=1213041003236890
 ### Exclusão de Tarefa
 
 1. Usuário exclui tarefa no Task Manager
-2. Se a tarefa tem `asanaTaskGid`, marca como concluída no Asana
-3. A tarefa não é deletada do Asana (API não permite exclusão)
+2. Se a tarefa tem `asanaTaskGid`, deleta a tarefa no Asana (move para lixeira)
+3. A tarefa pode ser recuperada por admins do workspace em até 30 dias
 
 ---
 
@@ -256,13 +256,116 @@ Tarefa criada automaticamente pelo Task Manager
 
 ## Limitações
 
-1. **Exclusão**: A API do Asana não permite deletar tarefas permanentemente. Tarefas excluídas são apenas marcadas como concluídas.
+1. **Exclusão permanente**: Tarefas excluídas no Task Manager são deletadas no Asana (movidas para a lixeira). Admins do workspace podem recuperá-las dentro de 30 dias.
 
-2. **Sincronização unidirecional**: Alterações feitas diretamente no Asana NÃO são refletidas no Task Manager.
+2. **Assignees**: Atualmente não sincroniza responsáveis (assignees).
 
-3. **Assignees**: Atualmente não sincroniza responsáveis (assignees).
+3. **Tags/Labels**: Atualmente não sincroniza tags ou labels.
 
-4. **Tags/Labels**: Atualmente não sincroniza tags ou labels.
+---
+
+## Sincronização Bidirecional (Webhooks)
+
+Por padrão, a integração é unidirecional (Task Manager → Asana). Para receber atualizações do Asana automaticamente, configure os webhooks.
+
+### Pré-requisitos para Webhooks
+
+- URL pública com HTTPS (o Asana não aceita HTTP)
+- Para desenvolvimento local, use [ngrok](https://ngrok.com/)
+
+### Configurando Webhooks
+
+#### 1. Expor sua aplicação (desenvolvimento)
+
+```bash
+# Instale o ngrok (se não tiver)
+npm install -g ngrok
+
+# Exponha a porta 3000
+ngrok http 3000
+```
+
+Copie a URL HTTPS gerada (ex: `https://abc123.ngrok.io`)
+
+#### 2. Registrar o Webhook
+
+```bash
+node scripts/register-asana-webhook.js https://abc123.ngrok.io/api/asana/webhook
+```
+
+O script irá:
+1. Enviar uma requisição para o Asana
+2. O Asana fará um handshake com seu endpoint
+3. Salvar o webhook GID para referência
+
+#### 3. Salvar o Secret
+
+Durante o handshake, o Asana envia um `X-Hook-Secret`. Este secret é armazenado automaticamente em memória, mas para persistência, adicione ao `.env.local`:
+
+```env
+ASANA_WEBHOOK_SECRET=seu-secret-aqui
+ASANA_WEBHOOK_GID=1234567890123456
+```
+
+### Gerenciando Webhooks
+
+```bash
+# Listar webhooks existentes
+node scripts/register-asana-webhook.js --list
+
+# Deletar um webhook
+node scripts/register-asana-webhook.js --delete <WEBHOOK_GID>
+
+# Ver ajuda
+node scripts/register-asana-webhook.js --help
+```
+
+### Eventos Sincronizados
+
+| Evento no Asana | Ação no Task Manager |
+|-----------------|----------------------|
+| Título alterado | Atualiza title |
+| Tarefa movida de seção | Atualiza status |
+| Tarefa marcada concluída | Status → completed |
+| Due date alterada | Atualiza deliveryDate |
+| Tarefa deletada | Status → cancelled |
+
+> 💡 **Nota:** O título é sincronizado automaticamente, facilitando a busca de tarefas solicitadas por clientes.
+
+### Segurança dos Webhooks
+
+Os webhooks são protegidos por:
+
+1. **Handshake inicial**: O Asana envia um `X-Hook-Secret` que deve ser retornado
+2. **Assinatura HMAC-SHA256**: Cada evento vem com `X-Hook-Signature` para validação
+3. **Verificação em produção**: Requests sem assinatura válida são rejeitados
+
+### Troubleshooting de Webhooks
+
+#### Webhook não registra
+
+```
+❌ O Asana não conseguiu completar o handshake
+```
+
+- Verifique se a URL está acessível publicamente
+- Confirme que o servidor está rodando
+- Teste o endpoint: `curl https://sua-url.com/api/asana/webhook`
+
+#### Eventos não chegam
+
+1. Verifique se o webhook está ativo: `node scripts/register-asana-webhook.js --list`
+2. Confira os logs do servidor para `[ASANA WEBHOOK]`
+3. Verifique se a tarefa tem `asanaTaskGid` no banco de dados
+
+#### Assinatura inválida
+
+```
+[ASANA WEBHOOK] Invalid signature
+```
+
+- O `ASANA_WEBHOOK_SECRET` pode estar incorreto
+- Delete o webhook e registre novamente
 
 ---
 
@@ -274,6 +377,21 @@ Lista as seções (colunas) de um projeto Asana.
 
 ```bash
 node scripts/list-asana-sections.js
+```
+
+### register-asana-webhook.js
+
+Gerencia webhooks do Asana.
+
+```bash
+# Registrar novo webhook
+node scripts/register-asana-webhook.js <URL_HTTPS>
+
+# Listar webhooks
+node scripts/register-asana-webhook.js --list
+
+# Deletar webhook
+node scripts/register-asana-webhook.js --delete <GID>
 ```
 
 **Requisitos:**
@@ -288,3 +406,4 @@ node scripts/list-asana-sections.js
 - [Asana Developer Console](https://app.asana.com/0/developer-console)
 - [Tasks API Reference](https://developers.asana.com/docs/tasks)
 - [Sections API Reference](https://developers.asana.com/docs/sections)
+- [Webhooks API Reference](https://developers.asana.com/docs/webhooks)
