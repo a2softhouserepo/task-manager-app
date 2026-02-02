@@ -52,6 +52,9 @@ const STATUS_OPTIONS = [
   { value: 'cancelled', label: 'Cancelada', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
 ];
 
+// Polling interval for real-time updates (5 seconds)
+const POLLING_INTERVAL = 5000;
+
 export default function TasksPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -68,6 +71,10 @@ export default function TasksPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [maxSubClientLevels, setMaxSubClientLevels] = useState(0);
+  
+  // Polling state for real-time Asana sync
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const [pollingEnabled, setPollingEnabled] = useState(true);
   
   // Ordenação
   const [sortColumn, setSortColumn] = useState<'requestDate' | 'clientName' | 'title' | 'cost'>('requestDate');
@@ -112,29 +119,44 @@ export default function TasksPage() {
   const userId = (session?.user as any)?.id;
   const canDelete = userRole === 'rootAdmin';
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    } else if (status === 'authenticated') {
-      loadData();
-    }
-  }, [status, router]);
-
-  /**
-   * OTIMIZAÇÃO: Debouncing de 300ms para evitar múltiplas requests
-   * durante mudanças rápidas de filtros
-   */
-  const debouncedLoadTasks = useDebouncedCallback(
-    () => {
-      if (status === 'authenticated') {
-        loadTasks();
+  // Declare loadTasks first so it can be used in useEffects below
+  const loadTasks = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      
+      if (useCustomPeriod) {
+        if (filterStartDate) params.set('startDate', filterStartDate);
+        if (filterEndDate) params.set('endDate', filterEndDate);
+      } else {
+        params.set('month', filterMonth);
       }
-    },
-    300
-  );
-
-  useEffect(() => {
-    debouncedLoadTasks();
+      
+      if (filterClientId) params.set('clientId', filterClientId);
+      if (filterCategoryId) params.set('categoryId', filterCategoryId);
+      if (filterStatus) params.set('status', filterStatus);
+      
+      const res = await fetch(`/api/tasks?${params.toString()}`);
+      const data = await res.json();
+      const tasksData = data.tasks || [];
+      setTasks(tasksData);
+      
+      // Update lastUpdate timestamp when tasks are loaded
+      if (tasksData.length > 0) {
+        const mostRecent = tasksData.reduce((latest: string, task: Task) => {
+          return task.createdAt > latest ? task.createdAt : latest;
+        }, tasksData[0].createdAt);
+        setLastUpdate(mostRecent);
+      }
+      
+      // Calcular número máximo de níveis de subclientes
+      const maxLevels = tasksData.reduce((max: number, task: Task) => {
+        const levels = task.subClientLevels?.length || 0;
+        return Math.max(max, levels);
+      }, 0);
+      setMaxSubClientLevels(maxLevels);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    }
   }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, filterStatus, useCustomPeriod]);
 
   const loadData = async () => {
@@ -163,35 +185,73 @@ export default function TasksPage() {
     }
   };
 
-  const loadTasks = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      
-      if (useCustomPeriod) {
-        if (filterStartDate) params.set('startDate', filterStartDate);
-        if (filterEndDate) params.set('endDate', filterEndDate);
-      } else {
-        params.set('month', filterMonth);
-      }
-      
-      if (filterClientId) params.set('clientId', filterClientId);
-      if (filterCategoryId) params.set('categoryId', filterCategoryId);
-      if (filterStatus) params.set('status', filterStatus);
-      
-      const res = await fetch(`/api/tasks?${params.toString()}`);
-      const data = await res.json();
-      const tasksData = data.tasks || [];
-      setTasks(tasksData);
-      
-      // Calcular número máximo de níveis de subclientes
-      const maxLevels = tasksData.reduce((max: number, task: Task) => {
-        const levels = task.subClientLevels?.length || 0;
-        return Math.max(max, levels);
-      }, 0);
-      setMaxSubClientLevels(maxLevels);
-    } catch (error) {
-      console.error('Error loading tasks:', error);
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated') {
+      loadData();
     }
+  }, [status, router]);
+
+  /**
+   * Polling for real-time updates from Asana webhooks
+   * Checks every POLLING_INTERVAL ms if there are new updates
+   */
+  useEffect(() => {
+    if (status !== 'authenticated' || !pollingEnabled) return;
+
+    const checkForUpdates = async () => {
+      try {
+        const url = lastUpdate 
+          ? `/api/tasks/updates?since=${encodeURIComponent(lastUpdate)}`
+          : '/api/tasks/updates';
+        
+        const res = await fetch(url);
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        
+        if (data.hasUpdates || (!lastUpdate && data.lastUpdate)) {
+          // There are new updates, reload tasks
+          console.log('[POLLING] Updates detected, reloading tasks...');
+          await loadTasks();
+        }
+        
+        // Update the last known timestamp
+        if (data.lastUpdate) {
+          setLastUpdate(data.lastUpdate);
+        }
+      } catch (error) {
+        // Silently fail polling errors to not disrupt user experience
+        console.debug('[POLLING] Error checking for updates:', error);
+      }
+    };
+
+    // Initial check
+    checkForUpdates();
+
+    // Set up interval
+    const intervalId = setInterval(checkForUpdates, POLLING_INTERVAL);
+
+    // Cleanup on unmount or when dependencies change
+    return () => clearInterval(intervalId);
+  }, [status, pollingEnabled, lastUpdate, loadTasks]);
+
+  /**
+   * OTIMIZAÇÃO: Debouncing de 300ms para evitar múltiplas requests
+   * durante mudanças rápidas de filtros
+   */
+  const debouncedLoadTasks = useDebouncedCallback(
+    () => {
+      if (status === 'authenticated') {
+        loadTasks();
+      }
+    },
+    300
+  );
+
+  useEffect(() => {
+    debouncedLoadTasks();
   }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, filterStatus, useCustomPeriod]);
 
   /**

@@ -208,17 +208,22 @@ export async function PUT(
     Object.assign(task, updates);
     task.updatedAt = new Date();
     
+    // Check if this update came from a webhook (to prevent sync loops)
+    const fromWebhook = (task as any)._fromWebhook === true;
+    if (fromWebhook) {
+      delete (task as any)._fromWebhook;
+    }
+    
     // Capture plain text values BEFORE saving (save will encrypt them)
     const plainTitle = task.title;
     const plainDescription = task.description;
     
     await task.save();
 
-    // Sync to Asana if requested and configured
-    // Sync to Asana if requested and configured
+    // Sync to Asana if requested and configured (skip if update came from webhook)
     let attachmentErrors: string[] = [];
     
-    if (validationResult.data.sendToAsana && isAsanaConfigured()) {
+    if (validationResult.data.sendToAsana && isAsanaConfigured() && !fromWebhook) {
       // Get current client and category names
       const currentClient = await Client.findById(task.clientId);
       const currentCategory = await Category.findById(task.categoryId);

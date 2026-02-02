@@ -232,6 +232,14 @@ npm run categories:update-icons # Atualizar ícones de categorias
 npm run test:db      # Testar conexão com banco de dados
 ```
 
+### Asana
+```bash
+npm run asana:sections          # Listar seções (colunas) do projeto Asana
+npm run asana:webhook:register  # Registrar webhook para sincronização bidirecional
+npm run asana:webhook:list      # Listar webhooks ativos
+npm run asana:webhook:delete    # Deletar um webhook (requer GID como argumento)
+```
+
 ---
 
 ## 📦 Variáveis de Ambiente Necessárias
@@ -266,6 +274,8 @@ Consulte [archive/README.md](./archive/README.md) para mais detalhes.
 
 4. **Importação**: Verifique se o arquivo Excel está no formato esperado antes de importar.
 
+5. **Asana Webhooks**: Ao usar ngrok, a URL muda a cada reinício. Será necessário registrar um novo webhook cada vez.
+
 ---
 
-**Última atualização:** 23 de janeiro de 2026
+**Última atualização:** 2 de fevereiro de 2026

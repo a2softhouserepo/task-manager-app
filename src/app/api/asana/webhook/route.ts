@@ -167,6 +167,8 @@ async function processEvent(event: any): Promise<void> {
       // Only save if there were changes
       if (changes.length > 0) {
         task.updatedAt = new Date();
+        // Flag to prevent sync loop back to Asana
+        (task as any)._fromWebhook = true;
         await task.save();
 
         await logAudit({
@@ -195,6 +197,8 @@ async function processEvent(event: any): Promise<void> {
         
         task.status = 'cancelled';
         task.updatedAt = new Date();
+        // Flag to prevent sync loop back to Asana
+        (task as any)._fromWebhook = true;
         await task.save();
 
         await logAudit({

@@ -1,19 +1,78 @@
 # Integração com Asana
 
-Este documento descreve como configurar e utilizar a integração do Task Manager com o Asana.
+Este documento descreve como configurar e utilizar a integração bidirecional do Task Manager com o Asana.
 
 ## Visão Geral
 
-A integração permite:
+A integração permite sincronização bidirecional completa:
+
+### Task Manager → Asana
 - ✅ Criar tarefas no Asana automaticamente ao criar no Task Manager
 - ✅ Atualizar tarefas existentes (título, descrição, data de entrega)
 - ✅ Mover tarefas entre colunas (seções) baseado no status
 - ✅ Marcar tarefas como concluídas ao excluir no Task Manager
+- ✅ Upload de anexos para o Asana
+
+### Asana → Task Manager (via Webhooks)
+- ✅ Atualização automática quando título é alterado no Asana
+- ✅ Sincronização de status quando tarefa é movida entre colunas
+- ✅ Atualização de data de entrega
+- ✅ Tarefa marcada como cancelada quando deletada no Asana
+- ✅ Atualização em tempo real no frontend (polling a cada 5s)
 
 ## Pré-requisitos
 
 - Conta no Asana (plano gratuito funciona)
 - Um projeto no Asana configurado como Board (Kanban)
+- Para webhooks: URL pública HTTPS (ngrok para desenvolvimento)
+
+---
+
+## Configuração Rápida
+
+### 1. Configurar Variáveis de Ambiente
+
+Adicione ao `.env.local`:
+
+```env
+# Token de acesso (obrigatório) - Asana > Configurações > Aplicativos > Criar token
+ASANA_ACCESS_TOKEN=seu-token-aqui
+
+# ID do projeto (obrigatório) - Copie da URL: app.asana.com/0/[GID]/board
+ASANA_PROJECT_GID=1234567890123456
+```
+
+### 2. Obter GIDs das Seções
+
+```bash
+npm run asana:sections
+```
+
+Copie os GIDs sugeridos para o `.env.local`:
+
+```env
+ASANA_SECTION_PENDING=1234567890123456
+ASANA_SECTION_IN_PROGRESS=1234567890123457
+ASANA_SECTION_COMPLETED=1234567890123458
+ASANA_SECTION_CANCELLED=1234567890123459
+```
+
+### 3. Configurar Webhooks (Opcional mas Recomendado)
+
+Para receber atualizações do Asana em tempo real:
+
+```bash
+# Terminal 1: Servidor de desenvolvimento
+npm run dev
+
+# Terminal 2: Expor via ngrok (plano free funciona)
+ngrok http 3000
+
+# Terminal 3: Registrar webhook (use a URL HTTPS do ngrok)
+npm run asana:webhook:register -- https://abc123.ngrok.io/api/asana/webhook
+```
+
+Copie o `ASANA_WEBHOOK_SECRET` dos logs para o `.env.local` para persistência.
 
 ---
 
@@ -376,7 +435,7 @@ Os webhooks são protegidos por:
 Lista as seções (colunas) de um projeto Asana.
 
 ```bash
-node scripts/list-asana-sections.js
+npm run asana:sections
 ```
 
 ### register-asana-webhook.js
@@ -385,18 +444,63 @@ Gerencia webhooks do Asana.
 
 ```bash
 # Registrar novo webhook
-node scripts/register-asana-webhook.js <URL_HTTPS>
+npm run asana:webhook:register -- <URL_HTTPS>
 
-# Listar webhooks
-node scripts/register-asana-webhook.js --list
+# Listar webhooks ativos
+npm run asana:webhook:list
 
-# Deletar webhook
-node scripts/register-asana-webhook.js --delete <GID>
+# Deletar webhook (requer GID como argumento)
+npm run asana:webhook:delete -- <GID>
 ```
 
 **Requisitos:**
 - `ASANA_ACCESS_TOKEN` configurado no `.env.local`
 - `ASANA_PROJECT_GID` configurado no `.env.local`
+
+---
+
+## Testando a Integração
+
+### Teste 1: Task Manager → Asana
+
+1. Abra o Task Manager em `http://localhost:3000/tasks`
+2. Crie uma nova tarefa com "Enviar para Asana" marcado
+3. Verifique no Asana se a tarefa apareceu na coluna correta
+4. Edite o status no Task Manager e veja a tarefa mover de coluna no Asana
+
+### Teste 2: Asana → Task Manager (Requer Webhooks)
+
+1. Certifique-se que o webhook está registrado
+2. Edite o título de uma tarefa no Asana
+3. Aguarde ~5 segundos e veja a atualização no Task Manager
+4. Mova a tarefa entre colunas no Asana e observe a mudança de status
+
+### Verificar Logs
+
+Os logs do servidor mostram toda a atividade de sincronização:
+
+```
+[ASANA] Creating task: Minha Tarefa
+[ASANA] Task created: 1234567890123456
+[ASANA WEBHOOK] Processing changed event for task 1234567890123456
+[ASANA WEBHOOK] Updated task abc123: title, status
+[POLLING] Updates detected, reloading tasks...
+```
+
+---
+
+## Notas sobre ngrok Free
+
+O plano gratuito do ngrok funciona, mas tem algumas limitações:
+
+1. **URL muda a cada reinício** — Será necessário registrar um novo webhook
+2. **Pode haver interstitial page** — Use o comando com `--host-header`:
+   ```bash
+   ngrok http 3000 --host-header=localhost
+   ```
+3. **Sessões expiram** — O tunnel pode cair após algumas horas de inatividade
+
+**Dica:** Em produção com domínio próprio, o webhook será permanente.
 
 ---
 
