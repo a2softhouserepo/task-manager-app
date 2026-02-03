@@ -137,7 +137,7 @@ export default function TaskModal({
           cost: editingTask.cost,
           observations: editingTask.observations || '',
           status: editingTask.status,
-          sendToAsana: true, // Default to true when editing
+          sendToAsana: !!editingTask.asanaTaskGid, // true se já sincronizada, false se não
         });
       } else {
         setForm(getInitialFormState());
@@ -408,17 +408,23 @@ export default function TaskModal({
             </select>
           </div>
           <div className="flex items-end pb-1">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.sendToAsana}
-                onChange={(e) => setForm({ ...form, sendToAsana: e.target.checked })}
-                className="rounded border-gray-300"
-              />
-              <span className="text-sm text-muted-foreground">
-                {editingTask ? 'Re-enviar Asana' : 'Enviar Asana'}
-              </span>
-            </label>
+            {editingTask?.asanaTaskGid ? (
+              <div className="flex items-center gap-2 px-2 py-1 bg-green-100 dark:bg-green-900/30 rounded text-sm text-green-700 dark:text-green-400">
+                ✅ Sincronizado com Asana
+              </div>
+            ) : (
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.sendToAsana}
+                  onChange={(e) => setForm({ ...form, sendToAsana: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm text-muted-foreground">
+                  Enviar para Asana
+                </span>
+              </label>
+            )}
           </div>
         </div>
         
@@ -434,16 +440,16 @@ export default function TaskModal({
             type="file"
             multiple
             accept={asanaConfig.allowedTypes.join(',')}
-            disabled={!form.sendToAsana || saving}
+            disabled={(!form.sendToAsana && !editingTask?.asanaTaskGid) || saving}
             onChange={handleFileChange}
             className="input-soft file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          {!form.sendToAsana && (
+          {!form.sendToAsana && !editingTask?.asanaTaskGid && (
             <p className="text-xs text-muted-foreground mt-1">
-              Marque &quot;{editingTask ? 'Re-enviar' : 'Enviar'} Asana&quot; para habilitar anexos
+              Marque &quot;Enviar para Asana&quot; para habilitar anexos
             </p>
           )}
-          {editingTask && editingTask.asanaTaskGid && form.sendToAsana && (
+          {editingTask?.asanaTaskGid && (
             <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
               ℹ️ Novos anexos serão adicionados à tarefa existente no Asana
             </p>

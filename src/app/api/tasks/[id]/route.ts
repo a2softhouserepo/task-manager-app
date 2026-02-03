@@ -229,9 +229,11 @@ export async function PUT(
 
     // Sync to Asana if requested and configured (skip if update came from webhook)
     // OTIMIZAÇÃO: Só sincroniza se houver mudanças em campos sincronizáveis
+    // Also sync if task is already synced (has asanaTaskGid), regardless of sendToAsana flag
     let attachmentErrors: string[] = [];
+    const shouldSync = (validationResult.data.sendToAsana || !!task.asanaTaskGid) && isAsanaConfigured() && !fromWebhook;
     
-    if (validationResult.data.sendToAsana && isAsanaConfigured() && !fromWebhook) {
+    if (shouldSync) {
       // Verifica se há mudanças em campos que sincronizam com Asana
       if (!hasAsanaSyncableChanges && attachments.length === 0) {
         console.log('[ASANA] Skipping sync - no syncable fields changed (cost, clientId, categoryId, observations only)');
