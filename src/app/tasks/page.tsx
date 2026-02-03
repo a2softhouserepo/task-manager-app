@@ -53,15 +53,13 @@ const STATUS_OPTIONS = [
   { value: 'cancelled', label: 'Cancelada', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
 ];
 
-// Polling interval for real-time updates (3 seconds for faster response)
-const POLLING_INTERVAL = 3000;
-
 export default function TasksPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { density } = useUI();
   const isCompact = density === 'compact';
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [pollingInterval, setPollingInterval] = useState(3000); // Default 3 seconds
   const [clients, setClients] = useState<Client[]>([]);
   const [clientsTree, setClientsTree] = useState<Client[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -119,6 +117,25 @@ export default function TasksPage() {
   const userRole = (session?.user as any)?.role || 'user';
   const userId = (session?.user as any)?.id;
   const canDelete = userRole === 'rootAdmin';
+
+  // Load polling configuration from settings
+  useEffect(() => {
+    async function loadPollingConfig() {
+      try {
+        const res = await fetch('/api/settings/asana');
+        if (res.ok) {
+          const data = await res.json();
+          const intervalSeconds = data.pollingIntervalSeconds || 3;
+          setPollingInterval(intervalSeconds * 1000);
+        }
+      } catch (error) {
+        console.debug('[POLLING] Using default interval');
+      }
+    }
+    if (status === 'authenticated') {
+      loadPollingConfig();
+    }
+  }, [status]);
 
   // Declare loadTasks first so it can be used in useEffects below
   const loadTasks = useCallback(async () => {
@@ -242,14 +259,14 @@ export default function TasksPage() {
     const initialTimeout = setTimeout(checkForUpdates, 1000);
 
     // Set up interval
-    const intervalId = setInterval(checkForUpdates, POLLING_INTERVAL);
+    const intervalId = setInterval(checkForUpdates, pollingInterval);
 
     // Cleanup on unmount or when dependencies change
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(intervalId);
     };
-  }, [status, pollingEnabled, loadTasks]);
+  }, [status, pollingEnabled, pollingInterval, loadTasks]);
 
   /**
    * OTIMIZAÇÃO: Debouncing de 300ms para evitar múltiplas requests

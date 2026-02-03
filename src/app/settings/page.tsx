@@ -160,6 +160,110 @@ export default function SettingsPage() {
     const value = getConfigValue(config);
     const hasChange = changes[config.key] !== undefined;
 
+    // Special rendering for polling interval with visual guide
+    if (config.key === 'asana_polling_interval_seconds') {
+      const getRecommendation = (seconds: number) => {
+        if (seconds >= 1 && seconds <= 3) {
+          return {
+            label: '⚡ Muito Rápido',
+            description: 'Atualizações quase instantâneas',
+            color: 'text-green-600 dark:text-green-400',
+            bgColor: 'bg-green-50 dark:bg-green-900/20',
+            borderColor: 'border-green-200 dark:border-green-800'
+          };
+        } else if (seconds >= 4 && seconds <= 7) {
+          return {
+            label: '✅ Recomendado',
+            description: 'Equilíbrio ideal entre velocidade e recursos',
+            color: 'text-blue-600 dark:text-blue-400',
+            bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+            borderColor: 'border-blue-200 dark:border-blue-800'
+          };
+        } else if (seconds >= 8 && seconds <= 15) {
+          return {
+            label: '🔋 Econômico',
+            description: 'Menos requisições ao servidor',
+            color: 'text-purple-600 dark:text-purple-400',
+            bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+            borderColor: 'border-purple-200 dark:border-purple-800'
+          };
+        } else {
+          return {
+            label: '🐢 Muito Lento',
+            description: 'Atualizações podem demorar',
+            color: 'text-orange-600 dark:text-orange-400',
+            bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+            borderColor: 'border-orange-200 dark:border-orange-800'
+          };
+        }
+      };
+      
+      const recommendation = getRecommendation(value);
+      
+      return (
+        <div className="space-y-3 w-full">
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min="1"
+              max="30"
+              step="1"
+              value={value}
+              onChange={(e) => handleValueChange(config.key, parseInt(e.target.value))}
+              className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 ${hasChange ? 'ring-2 ring-blue-500' : ''}`}
+              style={{
+                background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((value - 1) / 29) * 100}%, #e5e7eb ${((value - 1) / 29) * 100}%, #e5e7eb 100%)`
+              }}
+            />
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={value}
+              onChange={(e) => handleValueChange(config.key, Math.max(1, Math.min(30, parseInt(e.target.value) || 1)))}
+              className={`input-soft w-16 text-center ${hasChange ? 'ring-2 ring-blue-500' : ''}`}
+            />
+            <span className="text-sm text-muted-foreground whitespace-nowrap">seg</span>
+          </div>
+          
+          <div className={`p-3 rounded-lg border ${recommendation.bgColor} ${recommendation.borderColor}`}>
+            <div className={`text-sm font-medium ${recommendation.color} mb-1`}>
+              {recommendation.label}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {recommendation.description}
+            </div>
+            <div className="text-xs text-muted-foreground mt-2 space-y-1">
+              {value <= 3 && (
+                <>
+                  <div>✓ Latência: ~{value}s após mudanças no Asana</div>
+                  <div>⚠️ Mais requisições ao servidor (~{Math.round(60/value)}/min)</div>
+                </>
+              )}
+              {value >= 4 && value <= 7 && (
+                <>
+                  <div>✓ Latência aceitável: ~{value}s</div>
+                  <div>✓ Uso moderado de recursos (~{Math.round(60/value)}/min)</div>
+                </>
+              )}
+              {value >= 8 && value <= 15 && (
+                <>
+                  <div>✓ Poucas requisições (~{Math.round(60/value)}/min)</div>
+                  <div>⚠️ Atualizações mais lentas (~{value}s)</div>
+                </>
+              )}
+              {value > 15 && (
+                <>
+                  <div>✓ Mínimas requisições (~{Math.round(60/value)}/min)</div>
+                  <div>⚠️ Pode parecer lento para o usuário</div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (config.options && config.options.length > 0) {
       return (
         <select

@@ -18,17 +18,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar apenas as configurações necessárias para o upload
-    const [allowedTypes, maxSizeMB, maxFiles] = await Promise.all([
+    // Buscar apenas as configurações necessárias para o upload e polling
+    const [allowedTypes, maxSizeMB, maxFiles, pollingIntervalSeconds] = await Promise.all([
       getConfig<string[]>('asana_allowed_file_types', ['.zip']),
       getConfig<number>('asana_max_file_size_mb', 10),
       getConfig<number>('asana_max_files_per_task', 5),
+      getConfig<number>('asana_polling_interval_seconds', 3),
     ]);
 
     return NextResponse.json({
       allowedTypes,
       maxSizeMB,
       maxFiles,
+      pollingIntervalSeconds,
     });
   } catch (error) {
     console.error('Erro ao buscar configurações do Asana:', error);

@@ -162,6 +162,15 @@ const defaultConfigs = [
     description: 'Quantidade máxima de arquivos que podem ser anexados a uma tarefa',
     updatedBy: 'SYSTEM',
   },
+  {
+    key: 'asana_polling_interval_seconds',
+    value: 3,
+    type: 'number',
+    category: 'asana',
+    label: 'Intervalo de Sincronização (segundos)',
+    description: 'Frequência de verificação de atualizações do Asana. Menor = mais rápido (1-3s), Maior = menos requisições (5-30s)',
+    updatedBy: 'SYSTEM',
+  },
   
   // General Settings
   {
