@@ -170,10 +170,11 @@ export async function createAsanaTask(task: AsanaTaskData): Promise<AsanaResult>
       taskData.due_on = formatDateForAsana(new Date(task.dueDate));
     }
     
-    // Add start date if provided (requestDate -> start_on)
-    if (task.startDate) {
-      taskData.start_on = formatDateForAsana(new Date(task.startDate));
-    }
+    // NOTA: start_on não é enviado porque não está disponível em todos os planos do Asana
+    // Se precisar, descomente o código abaixo e configure ASANA_ENABLE_START_DATE=true
+    // if (process.env.ASANA_ENABLE_START_DATE === 'true' && task.startDate) {
+    //   taskData.start_on = formatDateForAsana(new Date(task.startDate));
+    // }
     
     // NOTA: Não marcamos completed no Asana - apenas movemos de seção
     // O status é controlado pelas seções do board (Pendente, Em Andamento, Concluída, Cancelada)
@@ -243,12 +244,15 @@ export async function updateAsanaTask(taskGid: string, task: AsanaTaskData): Pro
       updateData.due_on = null;
     }
     
-    // Update start date (requestDate -> start_on)
-    if (task.startDate) {
-      updateData.start_on = formatDateForAsana(new Date(task.startDate));
-    } else {
-      updateData.start_on = null;
-    }
+    // NOTA: start_on não é enviado porque não está disponível em todos os planos do Asana
+    // Se precisar, descomente o código abaixo e configure ASANA_ENABLE_START_DATE=true
+    // if (process.env.ASANA_ENABLE_START_DATE === 'true') {
+    //   if (task.startDate) {
+    //     updateData.start_on = formatDateForAsana(new Date(task.startDate));
+    //   } else {
+    //     updateData.start_on = null;
+    //   }
+    // }
     
     // NOTA: Não usamos completed - status é controlado pelas seções do board
     // As seções determinam se uma tarefa está Pendente, Em Andamento, Concluída ou Cancelada

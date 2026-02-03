@@ -25,7 +25,6 @@ A integração permite sincronização bidirecional completa:
 |--------------------|-------------|---------|
 | Título             | name        | ↔️ Bidirecional |
 | Descrição          | notes       | ↔️ Bidirecional |
-| Data Solicitação   | start_on    | ↔️ Bidirecional |
 | Data Entrega       | due_on      | ↔️ Bidirecional |
 | Status             | section     | ↔️ Bidirecional |
 
@@ -34,6 +33,7 @@ A integração permite sincronização bidirecional completa:
 - Categoria  
 - Custo
 - Observações
+- Data de Solicitação (start_on) - não disponível em todos os planos do Asana
 
 > **Nota:** O status "completed" NÃO marca a tarefa como concluída no Asana (checkmark). Apenas move para a seção correspondente.
 
