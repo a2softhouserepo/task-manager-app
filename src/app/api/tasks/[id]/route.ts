@@ -18,7 +18,7 @@ const updateTaskSchema = z.object({
   description: z.string().min(1, 'Descrição não pode estar vazia').max(5000, 'Descrição muito longa').optional(),
   deliveryDate: z.string().or(z.date()).nullable().optional(),
   cost: z.number().min(0, 'Custo não pode ser negativo').optional(),
-  observations: z.string().max(2000, 'Observações muito longas').optional(),
+  observations: z.string().max(2000, 'Observações muito longas').nullable().optional(),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
   sendToAsana: z.boolean().optional(),
 });
