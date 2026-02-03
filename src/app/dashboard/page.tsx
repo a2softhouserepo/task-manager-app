@@ -2,16 +2,17 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import dynamic from 'next/dynamic';
-import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
 import { useAsanaSyncedData } from '@/contexts/AsanaSyncContext';
 import { getChartColors } from '@/lib/chartColors';
 import TaskModal from '@/components/TaskModal';
 import Modal from '@/components/Modal';
-import { SyncColumnHeader, SyncColumnCell } from '@/components/SyncColumnHeader';
+import { DataTable } from '@/components/ui/Table';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
 // Importação síncrona dos componentes do PieChart (Cell não funciona com lazy load)
 import {
@@ -87,13 +88,6 @@ interface Stats {
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
-const STATUS_OPTIONS = [
-  { value: 'pending', label: 'Pendente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
-  { value: 'in_progress', label: 'Em Andamento', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-  { value: 'completed', label: 'Concluída', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  { value: 'cancelled', label: 'Cancelada', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
-];
-
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -124,10 +118,8 @@ export default function DashboardPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   
-  // Dropdown inline de status
-  const [statusDropdownId, setStatusDropdownId] = useState<string | null>(null);
+  // Status update loading
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
   const userRole = (session?.user as any)?.role || 'user';
   const userId = (session?.user as any)?.id;
@@ -273,45 +265,6 @@ export default function DashboardPage() {
     }));
   }, [stats?.categoryStats]);
 
-  // Função para renderizar ícone de ordenação
-  const renderSortIcon = (column: 'requestDate' | 'deliveryDate' | 'cost') => {
-    const isActive = sortColumn === column;
-    const isAsc = sortDirection === 'asc';
-    
-    return (
-      <div className="flex flex-col">
-        <svg 
-          className={`w-3 h-3 ${isActive && isAsc ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} transition-colors`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        </svg>
-        <svg 
-          className={`w-3 h-3 -mt-1 ${isActive && !isAsc ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} transition-colors`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
-    );
-  };
-
-  // Função para lidar com clique nos cabeçalhos
-  const handleSort = (column: 'requestDate' | 'deliveryDate' | 'cost') => {
-    if (sortColumn === column) {
-      // Se já está ordenando por esta coluna, alterna a direção
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Nova coluna, começa com ascendente
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
-
   // Função para construir opções hierárquicas de clientes
   const buildClientOptions = (clientList: Client[], level: number = 0): React.ReactElement[] => {
     const options: React.ReactElement[] = [];
@@ -367,31 +320,8 @@ export default function DashboardPage() {
     }
   }, [tasks, viewingTask, showViewModal]);
 
-  const getStatusBadge = (status: string) => {
-    const option = STATUS_OPTIONS.find(s => s.value === status);
-    return option || STATUS_OPTIONS[0];
-  };
-
-  // Fechar dropdown de status ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
-        setStatusDropdownId(null);
-      }
-    };
-
-    if (statusDropdownId) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [statusDropdownId]);
-
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     setUpdatingStatus(taskId);
-    setStatusDropdownId(null);
     
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
@@ -464,25 +394,18 @@ export default function DashboardPage() {
       
       // Título
       doc.setFontSize(18);
-      doc.text('Relatório de Serviços', 14, 22);
+      doc.text('Relatório de Tarefas Pendentes', 14, 22);
       
-      // Período
+      // Info
       doc.setFontSize(10);
-      let periodText = '';
-      if (useCustomPeriod && filterStartDate && filterEndDate) {
-        periodText = `Período: ${formatDate(filterStartDate)} a ${formatDate(filterEndDate)}`;
-      } else {
-        const [year, month] = filterMonth.split('-');
-        periodText = `Período: ${getMonthName(parseInt(month) - 1)}/${year}`;
-      }
-      doc.text(periodText, 14, 30);
+      doc.text('Todas as tarefas ativas (pendentes e em andamento)', 14, 30);
       
       // Total
-      const total = tasks.reduce((sum, t) => sum + t.cost, 0);
-      doc.text(`Total: ${formatCurrency(total)}`, 14, 36);
+      const total = sortedTasks.reduce((sum, t) => sum + t.cost, 0);
+      doc.text(`Total: ${formatCurrency(total)} (${sortedTasks.length} tarefas)`, 14, 36);
       
       // Tabela
-      const tableData = tasks.map(task => [
+      const tableData = sortedTasks.map(task => [
         formatDate(task.requestDate),
         task.categoryName,
         task.clientName,
@@ -501,7 +424,7 @@ export default function DashboardPage() {
         headStyles: { fillColor: [59, 130, 246] },
       });
       
-      doc.save(`relatorio-servicos-${filterMonth || 'custom'}.pdf`);
+      doc.save(`relatorio-tarefas-pendentes.pdf`);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Erro ao exportar PDF');
@@ -771,153 +694,88 @@ export default function DashboardPage() {
         </div>
 
         {/* Tabela */}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-200">
-            <thead className="">
-              <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <SyncColumnHeader isSynced className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
-                  <button
-                    onClick={() => handleSort('requestDate')}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  >
-                    DATA
-                    {renderSortIcon('requestDate')}
-                  </button>
-                </SyncColumnHeader>
-                <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>CATEGORIA</th>
-                <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>CLIENTE</th>
-                <SyncColumnHeader isSynced className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
-                  TÍTULO
-                </SyncColumnHeader>
-                <SyncColumnHeader isSynced className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
-                  STATUS
-                </SyncColumnHeader>
-                <th className={`px-4 text-right whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>AÇÕES</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedTasks.map((task) => (
-                <tr 
-                  key={task._id} 
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer"
-                  onClick={() => openViewModal(task)}
-                >
-                  <SyncColumnCell isSynced={task.asanaSynced} className={`px-4 text-sm text-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    {formatDate(task.requestDate)}
-                  </SyncColumnCell>
-                  <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <div className="flex items-center gap-2 max-w-xs">
-                      {task.categoryIcon && (
-                        <span className="text-lg" style={{ color: task.categoryColor || '#6B7280' }}>
-                          {task.categoryIcon}
-                        </span>
-                      )}
-                      <span className="truncate" title={task.categoryName}>
-                        {task.categoryName}
+        <DataTable 
+          density={density} 
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSortChange={(column, direction) => {
+            setSortColumn(column as 'requestDate' | 'deliveryDate' | 'cost');
+            setSortDirection(direction);
+          }}
+        >
+          <DataTable.Header>
+            <DataTable.Column sortKey="requestDate" synced>DATA</DataTable.Column>
+            <DataTable.Column>CATEGORIA</DataTable.Column>
+            <DataTable.Column>CLIENTE</DataTable.Column>
+            <DataTable.Column synced>TÍTULO</DataTable.Column>
+            <DataTable.Column synced>STATUS</DataTable.Column>
+            <DataTable.Column align="right">AÇÕES</DataTable.Column>
+          </DataTable.Header>
+          <DataTable.Body emptyMessage="Nenhuma tarefa ativa encontrada" colSpan={6}>
+            {sortedTasks.map((task) => (
+              <DataTable.Row key={task._id} onClick={() => openViewModal(task)}>
+                <DataTable.Cell synced={task.asanaSynced}>
+                  {formatDate(task.requestDate)}
+                </DataTable.Cell>
+                <DataTable.Cell>
+                  <div className="flex items-center gap-2 max-w-xs">
+                    {task.categoryIcon && (
+                      <span className="text-lg" style={{ color: task.categoryColor || '#6B7280' }}>
+                        {task.categoryIcon}
                       </span>
-                    </div>
-                  </td>
-                  <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <div className="max-w-xs truncate" title={task.rootClientName || task.clientName}>
-                      {task.rootClientName || task.clientName}
-                    </div>
-                  </td>
-                  <SyncColumnCell isSynced={task.asanaSynced} className={`px-4 text-sm font-medium text-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <div className="max-w-xs truncate" title={task.title}>
-                      {task.title}
-                    </div>
-                  </SyncColumnCell>
-                  <SyncColumnCell isSynced={task.asanaSynced} className={`px-4 text-sm whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <div className="relative">
+                    )}
+                    <span className="truncate" title={task.categoryName}>
+                      {task.categoryName}
+                    </span>
+                  </div>
+                </DataTable.Cell>
+                <DataTable.Cell truncate title={task.rootClientName || task.clientName}>
+                  {task.rootClientName || task.clientName}
+                </DataTable.Cell>
+                <DataTable.Cell synced={task.asanaSynced} truncate title={task.title} className="font-medium">
+                  {task.title}
+                </DataTable.Cell>
+                <DataTable.Cell synced={task.asanaSynced}>
+                  <StatusBadge 
+                    status={task.status} 
+                    editable 
+                    loading={updatingStatus === task._id}
+                    onChange={(newStatus) => handleStatusChange(task._id, newStatus)}
+                  />
+                </DataTable.Cell>
+                <DataTable.Cell align="right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
+                      className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
+                      title="Editar"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    {canDelete && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setStatusDropdownId(statusDropdownId === task._id ? null : task._id);
-                        }}
-                        disabled={updatingStatus === task._id}
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 dark:hover:ring-gray-600 ${getStatusBadge(task.status).color}`}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(task._id); }}
+                        disabled={deleting === task._id}
+                        className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
+                        title="Excluir"
                       >
-                        {updatingStatus === task._id ? (
-                          <div className="w-3 h-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        {deleting === task._id ? (
+                          <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
                         ) : (
-                          <>
-                            {getStatusBadge(task.status).label}
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         )}
                       </button>
-                      
-                      {/* Dropdown de Status */}
-                      {statusDropdownId === task._id && (
-                        <div 
-                          ref={statusDropdownRef}
-                          className="absolute z-50 mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {STATUS_OPTIONS.map((option) => (
-                            <button
-                              key={option.value}
-                              onClick={() => handleStatusChange(task._id, option.value)}
-                              className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
-                                task.status === option.value ? 'bg-gray-50 dark:bg-gray-700/50' : ''
-                              }`}
-                            >
-                              <span className={`w-2 h-2 rounded-full ${option.color.split(' ')[0]}`}></span>
-                              {option.label}
-                              {task.status === option.value && (
-                                <svg className="w-4 h-4 ml-auto text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </SyncColumnCell>
-                  <td className={`px-4 whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
-                        className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
-                        title="Editar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      {canDelete && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(task._id); }}
-                          disabled={deleting === task._id}
-                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
-                          title="Excluir"
-                        >
-                          {deleting === task._id ? (
-                            <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                          ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {sortedTasks.length === 0 && (
-                <tr>
-                  <td colSpan={6} className={`px-4 text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
-                    Nenhuma tarefa ativa encontrada
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    )}
+                  </div>
+                </DataTable.Cell>
+              </DataTable.Row>
+            ))}
+          </DataTable.Body>
+        </DataTable>
       </section>
 
       {/* Modal de Visualização */}
@@ -948,9 +806,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-muted-foreground">Status</label>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(viewingTask.status).color}`}>
-                      {getStatusBadge(viewingTask.status).label}
-                    </span>
+                    <StatusBadge status={viewingTask.status} />
                   </div>
                 </div>
               </div>
