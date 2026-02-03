@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import dynamic from 'next/dynamic';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
@@ -10,6 +10,8 @@ import { useUI } from '@/contexts/UIContext';
 import { useAsanaSyncedData } from '@/contexts/AsanaSyncContext';
 import { getChartColors } from '@/lib/chartColors';
 import TaskModal from '@/components/TaskModal';
+import Modal from '@/components/Modal';
+import { SyncColumnHeader, SyncColumnCell } from '@/components/SyncColumnHeader';
 
 // Importação síncrona dos componentes do PieChart (Cell não funciona com lazy load)
 import {
@@ -50,6 +52,9 @@ interface Task {
   cost: number;
   observations?: string;
   status: string;
+  asanaSynced?: boolean;
+  asanaTaskGid?: string;
+  createdAt: string;
 }
 
 interface Client {
@@ -82,6 +87,13 @@ interface Stats {
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
+const STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pendente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  { value: 'in_progress', label: 'Em Andamento', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+  { value: 'completed', label: 'Concluída', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  { value: 'cancelled', label: 'Cancelada', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+];
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -96,15 +108,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   
   // Filtros
-  const [filterMonth, setFilterMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
   const [filterClientId, setFilterClientId] = useState('');
   const [filterCategoryId, setFilterCategoryId] = useState('');
-  const [useCustomPeriod, setUseCustomPeriod] = useState(false);
 
   // Ordenação
   const [sortColumn, setSortColumn] = useState<'requestDate' | 'deliveryDate' | 'cost'>('requestDate');
@@ -114,6 +119,15 @@ export default function DashboardPage() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  
+  // Modal de visualização
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  
+  // Dropdown inline de status
+  const [statusDropdownId, setStatusDropdownId] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
   const userRole = (session?.user as any)?.role || 'user';
   const userId = (session?.user as any)?.id;
@@ -124,12 +138,8 @@ export default function DashboardPage() {
     try {
       const params = new URLSearchParams();
       
-      if (useCustomPeriod) {
-        if (filterStartDate) params.set('startDate', filterStartDate);
-        if (filterEndDate) params.set('endDate', filterEndDate);
-      } else {
-        params.set('month', filterMonth);
-      }
+      // Buscar TODAS as tarefas sem filtro de data
+      params.set('noDateFilter', 'true');
       
       if (filterClientId) params.set('clientId', filterClientId);
       if (filterCategoryId) params.set('categoryId', filterCategoryId);
@@ -140,7 +150,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error loading tasks:', error);
     }
-  }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, useCustomPeriod]);
+  }, [filterClientId, filterCategoryId]);
 
   // Integração com AsanaSyncContext - recarrega tasks automaticamente quando há atualizações do Asana
   useAsanaSyncedData(loadTasks);
@@ -168,7 +178,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     debouncedLoadTasks();
-  }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, useCustomPeriod]);
+  }, [filterClientId, filterCategoryId]);
 
   const loadData = async () => {
     try {
@@ -201,9 +211,13 @@ export default function DashboardPage() {
 
   /**
    * OTIMIZAÇÃO: useMemo para evitar recálculos desnecessários da ordenação
+   * FILTRO: Exclui tarefas concluídas e canceladas para mostrar apenas ativas no Dashboard
    */
   const sortedTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => {
+    // Filtrar tarefas ativas (não concluídas nem canceladas)
+    const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
+    
+    return [...activeTasks].sort((a, b) => {
       let aValue: any, bValue: any;
 
       switch (sortColumn) {
@@ -328,6 +342,83 @@ export default function DashboardPage() {
     setShowTaskModal(true);
   };
 
+  const openViewModal = (task: Task) => {
+    setViewingTask(task);
+    setShowViewModal(true);
+  };
+
+  // Sync viewingTask with tasks list when it's updated (e.g., via Asana webhook)
+  useEffect(() => {
+    if (viewingTask && showViewModal) {
+      const updatedTask = tasks.find(t => t._id === viewingTask._id);
+      if (updatedTask) {
+        const hasChanged = 
+          updatedTask.title !== viewingTask.title ||
+          updatedTask.description !== viewingTask.description ||
+          updatedTask.status !== viewingTask.status ||
+          updatedTask.deliveryDate !== viewingTask.deliveryDate ||
+          updatedTask.cost !== viewingTask.cost;
+        
+        if (hasChanged) {
+          console.log('[DASHBOARD] Task updated, refreshing modal view');
+          setViewingTask(updatedTask);
+        }
+      }
+    }
+  }, [tasks, viewingTask, showViewModal]);
+
+  const getStatusBadge = (status: string) => {
+    const option = STATUS_OPTIONS.find(s => s.value === status);
+    return option || STATUS_OPTIONS[0];
+  };
+
+  // Fechar dropdown de status ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setStatusDropdownId(null);
+      }
+    };
+
+    if (statusDropdownId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [statusDropdownId]);
+
+  const handleStatusChange = async (taskId: string, newStatus: string) => {
+    setUpdatingStatus(taskId);
+    setStatusDropdownId(null);
+    
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (res.ok) {
+        // Atualizar lista de tasks
+        loadTasks();
+        // Recarregar stats
+        const statsRes = await fetch('/api/tasks/stats');
+        const statsData = await statsRes.json();
+        setStats(statsData);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao atualizar status');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Erro ao atualizar status');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
   const handleTaskModalClose = () => {
     setShowTaskModal(false);
     setEditingTask(null);
@@ -424,8 +515,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const totalFiltered = tasks.reduce((sum, t) => sum + t.cost, 0);
 
   return (
     <div id="dashboard-page" className="density-container density-py">
@@ -633,44 +722,15 @@ export default function DashboardPage() {
       {/* Filtros e Listagem */}
       <section id="dashboard-tasks" className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h3 className="text-lg font-semibold text-foreground whitespace-nowrap">
-            Tarefas do Período
-          </h3>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">
+              Tarefas Pendentes
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Tarefas pendentes e em andamento (desde sempre)
+            </p>
+          </div>
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 w-full sm:w-auto justify-start sm:justify-end">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={useCustomPeriod}
-                onChange={(e) => setUseCustomPeriod(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              <span className="text-sm text-gray-600 dark:text-gray-400">Período customizado</span>
-            </label>
-            
-            {useCustomPeriod ? (
-              <>
-                <input
-                  type="date"
-                  value={filterStartDate}
-                  onChange={(e) => setFilterStartDate(e.target.value)}
-                  className="input-soft w-full sm:w-auto"
-                />
-                <input
-                  type="date"
-                  value={filterEndDate}
-                  onChange={(e) => setFilterEndDate(e.target.value)}
-                  className="input-soft w-full sm:w-auto"
-                />
-              </>
-            ) : (
-              <input
-                type="month"
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
-                className="input-soft w-full sm:w-auto"
-              />
-            )}
-            
             <select
               value={filterClientId}
               onChange={(e) => setFilterClientId(e.target.value)}
@@ -697,10 +757,15 @@ export default function DashboardPage() {
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4 my-4">
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">
-              {tasks.length} tarefa(s) encontrada(s)
+              {sortedTasks.length} tarefa(s) ativa(s)
+              {tasks.length > sortedTasks.length && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({tasks.length - sortedTasks.length} concluída(s)/cancelada(s) oculta(s))
+                </span>
+              )}
             </span>
             <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-              Total: {formatCurrency(totalFiltered)}
+              Total: {formatCurrency(sortedTasks.reduce((sum, t) => sum + t.cost, 0))}
             </span>
           </div>
         </div>
@@ -710,7 +775,7 @@ export default function DashboardPage() {
           <table className="w-full min-w-200">
             <thead className="">
               <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
+                <SyncColumnHeader isSynced className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                   <button
                     onClick={() => handleSort('requestDate')}
                     className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -718,20 +783,28 @@ export default function DashboardPage() {
                     DATA
                     {renderSortIcon('requestDate')}
                   </button>
-                </th>
+                </SyncColumnHeader>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>CATEGORIA</th>
                 <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>CLIENTE</th>
-                <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>TÍTULO</th>
-                <th className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>STATUS</th>
+                <SyncColumnHeader isSynced className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
+                  TÍTULO
+                </SyncColumnHeader>
+                <SyncColumnHeader isSynced className={`px-4 whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>
+                  STATUS
+                </SyncColumnHeader>
                 <th className={`px-4 text-right whitespace-nowrap ${isCompact ? 'py-2' : 'py-3'}`}>AÇÕES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {sortedTasks.map((task) => (
-                <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                  <td className={`px-4 text-sm text-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
+                <tr 
+                  key={task._id} 
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer"
+                  onClick={() => openViewModal(task)}
+                >
+                  <SyncColumnCell isSynced={task.asanaSynced} className={`px-4 text-sm text-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     {formatDate(task.requestDate)}
-                  </td>
+                  </SyncColumnCell>
                   <td className={`px-4 text-sm text-muted-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     <div className="flex items-center gap-2 max-w-xs">
                       {task.categoryIcon && (
@@ -749,28 +822,65 @@ export default function DashboardPage() {
                       {task.rootClientName || task.clientName}
                     </div>
                   </td>
-                  <td className={`px-4 text-sm font-medium text-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
+                  <SyncColumnCell isSynced={task.asanaSynced} className={`px-4 text-sm font-medium text-foreground whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     <div className="max-w-xs truncate" title={task.title}>
                       {task.title}
                     </div>
-                  </td>
-                  <td className={`px-4 text-sm whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      task.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                      task.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                      task.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                    }`}>
-                      {task.status === 'completed' ? 'Concluída' :
-                       task.status === 'in_progress' ? 'Em Progresso' :
-                       task.status === 'cancelled' ? 'Cancelada' :
-                       'Pendente'}
-                    </span>
-                  </td>
+                  </SyncColumnCell>
+                  <SyncColumnCell isSynced={task.asanaSynced} className={`px-4 text-sm whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setStatusDropdownId(statusDropdownId === task._id ? null : task._id);
+                        }}
+                        disabled={updatingStatus === task._id}
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 dark:hover:ring-gray-600 ${getStatusBadge(task.status).color}`}
+                      >
+                        {updatingStatus === task._id ? (
+                          <div className="w-3 h-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <>
+                            {getStatusBadge(task.status).label}
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+                      
+                      {/* Dropdown de Status */}
+                      {statusDropdownId === task._id && (
+                        <div 
+                          ref={statusDropdownRef}
+                          className="absolute z-50 mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {STATUS_OPTIONS.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => handleStatusChange(task._id, option.value)}
+                              className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                                task.status === option.value ? 'bg-gray-50 dark:bg-gray-700/50' : ''
+                              }`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${option.color.split(' ')[0]}`}></span>
+                              {option.label}
+                              {task.status === option.value && (
+                                <svg className="w-4 h-4 ml-auto text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </SyncColumnCell>
                   <td className={`px-4 whitespace-nowrap ${isCompact ? 'py-2.5' : 'py-4'}`}>
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => openEditModal(task)}
+                        onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
                         className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
                         title="Editar"
                       >
@@ -780,7 +890,7 @@ export default function DashboardPage() {
                       </button>
                       {canDelete && (
                         <button
-                          onClick={() => handleDelete(task._id)}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(task._id); }}
                           disabled={deleting === task._id}
                           className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
                           title="Excluir"
@@ -798,10 +908,10 @@ export default function DashboardPage() {
                   </td>
                 </tr>
               ))}
-              {tasks.length === 0 && (
+              {sortedTasks.length === 0 && (
                 <tr>
-                  <td colSpan={5} className={`px-4 text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
-                    Nenhuma tarefa encontrada no período selecionado
+                  <td colSpan={6} className={`px-4 text-center text-muted-foreground ${isCompact ? 'py-8' : 'py-12'}`}>
+                    Nenhuma tarefa ativa encontrada
                   </td>
                 </tr>
               )}
@@ -809,6 +919,118 @@ export default function DashboardPage() {
           </table>
         </div>
       </section>
+
+      {/* Modal de Visualização */}
+      <Modal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        title="Detalhes da Tarefa"
+        size="lg"
+      >
+        {viewingTask && (
+          <div className="space-y-6">
+            {/* Informações Principais */}
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Informações Gerais</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Título</label>
+                    <p className="text-sm text-foreground font-medium">{viewingTask.title}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Cliente</label>
+                    <p className="text-sm text-foreground">{viewingTask.clientName}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Categoria</label>
+                    <p className="text-sm text-foreground">{viewingTask.categoryName}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Status</label>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(viewingTask.status).color}`}>
+                      {getStatusBadge(viewingTask.status).label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Datas e Valores</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Data de Solicitação</label>
+                    <p className="text-sm text-foreground">{formatDate(viewingTask.requestDate)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Data de Entrega</label>
+                    <p className="text-sm text-foreground">{viewingTask.deliveryDate ? formatDate(viewingTask.deliveryDate) : 'Não definida'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Custo</label>
+                    <p className="text-sm text-foreground font-semibold">{formatCurrency(viewingTask.cost)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Criado em</label>
+                    <p className="text-sm text-foreground">{formatDate(viewingTask.createdAt)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Descrição */}
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Descrição</h3>
+              <div className="rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+                <p className="text-sm text-foreground whitespace-pre-wrap">{viewingTask.description}</p>
+              </div>
+            </div>
+            
+            {/* Observações */}
+            {viewingTask.observations && (
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Observações</h3>
+                <div className="rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{viewingTask.observations}</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Status do Asana */}
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium text-muted-foreground">Status do Asana:</label>
+              {viewingTask.asanaSynced ? (
+                <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Sincronizado
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Não sincronizado
+                </span>
+              )}
+            </div>
+            
+            {/* Botões de Ação */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  openEditModal(viewingTask);
+                }}
+                className="btn-primary"
+              >
+                Editar Tarefa
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Modal Nova/Editar Tarefa */}
       <TaskModal

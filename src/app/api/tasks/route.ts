@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const month = searchParams.get('month'); // formato: YYYY-MM
+    const noDateFilter = searchParams.get('noDateFilter') === 'true'; // Desabilitar filtro de data padrão
     
     // Paginação (opcional - não obrigatória para manter compatibilidade)
     const page = parseInt(searchParams.get('page') || '1');
@@ -79,8 +80,8 @@ export async function GET(request: NextRequest) {
       query.requestDate = { $gte: start, $lte: end };
     }
 
-    // Se não há filtros de data, usar mês atual como padrão
-    if (!startDate && !endDate && !month) {
+    // Se não há filtros de data e noDateFilter não está ativo, usar mês atual como padrão
+    if (!startDate && !endDate && !month && !noDateFilter) {
       const now = new Date();
       const start = new Date(now.getFullYear(), now.getMonth(), 1);
       const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);

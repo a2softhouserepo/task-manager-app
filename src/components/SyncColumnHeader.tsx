@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface SyncColumnHeaderProps {
   /** Texto do cabeçalho da coluna */
@@ -27,18 +28,19 @@ export function SyncColumnHeader({
   className = '',
 }: SyncColumnHeaderProps) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
-  const iconRef = useRef<HTMLDivElement>(null);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  const iconRef = useRef<HTMLSpanElement>(null);
 
-  useEffect(() => {
-    if (showTooltip && iconRef.current) {
+  const handleMouseEnter = () => {
+    if (iconRef.current) {
       const rect = iconRef.current.getBoundingClientRect();
-      setTooltipPosition({
-        top: rect.bottom + window.scrollY + 8,
-        left: rect.left + window.scrollX + rect.width / 2,
+      setTooltipPos({
+        top: rect.bottom + 8,
+        left: rect.left + rect.width / 2,
       });
     }
-  }, [showTooltip]);
+    setShowTooltip(true);
+  };
 
   // Classes base + cor de fundo para colunas sincronizadas
   const headerClasses = `
@@ -47,19 +49,19 @@ export function SyncColumnHeader({
   `.trim();
 
   return (
-    <th className={headerClasses} style={{ position: 'relative', overflow: 'visible' }}>
+    <th className={headerClasses}>
       <div className="flex items-center gap-1">
         {sortButton || <span>{children}</span>}
         
         {isSynced && (
-          <div 
-            ref={iconRef}
-            className="relative inline-flex"
-            onMouseEnter={() => setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-          >
+          <>
             {/* Ícone de informação */}
-            <span className="text-blue-400 dark:text-blue-500 cursor-help ml-1" title="Sincronizado com Asana">
+            <span 
+              ref={iconRef}
+              className="text-blue-400 dark:text-blue-500 cursor-help ml-1"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={() => setShowTooltip(false)}
+            >
               <svg 
                 className="w-3.5 h-3.5" 
                 fill="none" 
@@ -75,13 +77,13 @@ export function SyncColumnHeader({
               </svg>
             </span>
             
-            {/* Tooltip com posicionamento dinâmico */}
-            {showTooltip && (
+            {/* Tooltip renderizado via Portal para ficar fora do fluxo da tabela */}
+            {showTooltip && typeof document !== 'undefined' && createPortal(
               <div 
-                className="fixed z-[9999] min-w-[220px] max-w-[280px] p-3 text-xs font-normal normal-case tracking-normal text-left bg-gray-900 dark:bg-gray-700 text-white rounded-lg shadow-2xl border border-gray-700 dark:border-gray-600"
+                className="fixed z-[99999] min-w-[220px] max-w-[280px] p-3 text-xs font-normal normal-case tracking-normal text-left bg-gray-900 dark:bg-gray-700 text-white rounded-lg shadow-2xl border border-gray-700 dark:border-gray-600 pointer-events-none"
                 style={{
-                  top: `${tooltipPosition.top}px`,
-                  left: `${tooltipPosition.left}px`,
+                  top: tooltipPos.top,
+                  left: tooltipPos.left,
                   transform: 'translateX(-50%)',
                 }}
               >
@@ -96,9 +98,10 @@ export function SyncColumnHeader({
                 </p>
                 {/* Seta do tooltip */}
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45 border-l border-t border-gray-700 dark:border-gray-600"></div>
-              </div>
+              </div>,
+              document.body
             )}
-          </div>
+          </>
         )}
       </div>
     </th>
