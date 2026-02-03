@@ -48,7 +48,7 @@ async function fetchAsanaTask(taskGid: string): Promise<any | null> {
 
   try {
     const response = await fetch(
-      `https://app.asana.com/api/1.0/tasks/${taskGid}?opt_fields=name,notes,due_on,completed,memberships.section.name`,
+      `https://app.asana.com/api/1.0/tasks/${taskGid}?opt_fields=name,notes,due_on,start_on,completed,memberships.section.name`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -191,7 +191,7 @@ async function processEvent(event: any): Promise<void> {
         }
       }
 
-      // Update due date
+      // Update due date (deliveryDate)
       if (asanaTask.due_on !== undefined) {
         const newDeliveryDate = asanaTask.due_on ? new Date(asanaTask.due_on) : undefined;
         const currentDeliveryDate = task.deliveryDate ? new Date(task.deliveryDate).toISOString().split('T')[0] : null;
@@ -199,6 +199,17 @@ async function processEvent(event: any): Promise<void> {
         if (asanaTask.due_on !== currentDeliveryDate) {
           task.deliveryDate = newDeliveryDate;
           changes.push('deliveryDate');
+        }
+      }
+
+      // Update start date (requestDate) - only if Asana has a value (requestDate is required in our system)
+      if (asanaTask.start_on) {
+        const newRequestDate = new Date(asanaTask.start_on);
+        const currentRequestDate = task.requestDate ? new Date(task.requestDate).toISOString().split('T')[0] : null;
+        
+        if (asanaTask.start_on !== currentRequestDate) {
+          task.requestDate = newRequestDate;
+          changes.push('requestDate');
         }
       }
 

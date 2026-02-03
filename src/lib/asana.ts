@@ -24,13 +24,14 @@
 
 const ASANA_API_BASE = 'https://app.asana.com/api/1.0';
 
-interface AsanaTaskData {
+export interface AsanaTaskData {
   title: string;
   description: string;
-  clientName: string;
-  category: string;
-  dueDate?: Date;
-  cost: number;
+  clientName?: string;
+  category?: string;
+  dueDate?: Date;       // deliveryDate -> due_on (Asana)
+  startDate?: Date;     // requestDate -> start_on (Asana)
+  cost?: number;
   status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
 }
 
@@ -164,15 +165,18 @@ export async function createAsanaTask(task: AsanaTaskData): Promise<AsanaResult>
       projects: [projectGid],
     };
     
-    // Add due date if provided
+    // Add due date if provided (deliveryDate -> due_on)
     if (task.dueDate) {
       taskData.due_on = formatDateForAsana(new Date(task.dueDate));
     }
     
-    // Mark as completed if task status is completed or cancelled
-    if (task.status === 'completed' || task.status === 'cancelled') {
-      taskData.completed = true;
+    // Add start date if provided (requestDate -> start_on)
+    if (task.startDate) {
+      taskData.start_on = formatDateForAsana(new Date(task.startDate));
     }
+    
+    // NOTA: Não marcamos completed no Asana - apenas movemos de seção
+    // O status é controlado pelas seções do board (Pendente, Em Andamento, Concluída, Cancelada)
     
     // Create the task
     const result = await asanaRequest('/tasks', 'POST', taskData);
@@ -231,7 +235,7 @@ export async function updateAsanaTask(taskGid: string, task: AsanaTaskData): Pro
       notes: buildTaskNotes(task),
     };
     
-    // Update due date
+    // Update due date (deliveryDate -> due_on)
     if (task.dueDate) {
       updateData.due_on = formatDateForAsana(new Date(task.dueDate));
     } else {
@@ -239,12 +243,15 @@ export async function updateAsanaTask(taskGid: string, task: AsanaTaskData): Pro
       updateData.due_on = null;
     }
     
-    // Update completion status
-    if (task.status === 'completed' || task.status === 'cancelled') {
-      updateData.completed = true;
+    // Update start date (requestDate -> start_on)
+    if (task.startDate) {
+      updateData.start_on = formatDateForAsana(new Date(task.startDate));
     } else {
-      updateData.completed = false;
+      updateData.start_on = null;
     }
+    
+    // NOTA: Não usamos completed - status é controlado pelas seções do board
+    // As seções determinam se uma tarefa está Pendente, Em Andamento, Concluída ou Cancelada
     
     // Update the task
     await asanaRequest(`/tasks/${taskGid}`, 'PUT', updateData);

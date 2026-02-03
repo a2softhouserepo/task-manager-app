@@ -8,17 +8,34 @@ A integração permite sincronização bidirecional completa:
 
 ### Task Manager → Asana
 - ✅ Criar tarefas no Asana automaticamente ao criar no Task Manager
-- ✅ Atualizar tarefas existentes (título, descrição, data de entrega)
+- ✅ Atualizar tarefas existentes (título, descrição, datas)
 - ✅ Mover tarefas entre colunas (seções) baseado no status
-- ✅ Marcar tarefas como concluídas ao excluir no Task Manager
 - ✅ Upload de anexos para o Asana
 
 ### Asana → Task Manager (via Webhooks)
 - ✅ Atualização automática quando título é alterado no Asana
 - ✅ Sincronização de status quando tarefa é movida entre colunas
-- ✅ Atualização de data de entrega
+- ✅ Atualização de data de entrega (due_on)
+- ✅ Atualização de data de solicitação (start_on)
 - ✅ Tarefa marcada como cancelada quando deletada no Asana
-- ✅ Atualização em tempo real no frontend (polling a cada 5s)
+- ✅ Atualização em tempo real no frontend (polling configurável)
+
+### Campos Sincronizados
+| Campo Task Manager | Campo Asana | Direção |
+|--------------------|-------------|---------|
+| Título             | name        | ↔️ Bidirecional |
+| Descrição          | notes       | ↔️ Bidirecional |
+| Data Solicitação   | start_on    | ↔️ Bidirecional |
+| Data Entrega       | due_on      | ↔️ Bidirecional |
+| Status             | section     | ↔️ Bidirecional |
+
+### Campos NÃO Sincronizados
+- Cliente
+- Categoria  
+- Custo
+- Observações
+
+> **Nota:** O status "completed" NÃO marca a tarefa como concluída no Asana (checkmark). Apenas move para a seção correspondente.
 
 ## Pré-requisitos
 

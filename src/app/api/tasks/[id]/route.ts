@@ -217,31 +217,44 @@ export async function PUT(
     // Capture plain text values BEFORE saving (save will encrypt them)
     const plainTitle = task.title;
     const plainDescription = task.description;
+    const plainRequestDate = task.requestDate;
+    
+    // Campos sincronizáveis com Asana: title, description, deliveryDate, status, requestDate
+    // Verifica se algum campo sincronizável foi alterado
+    const ASANA_SYNCABLE_FIELDS = ['title', 'description', 'deliveryDate', 'status', 'requestDate'];
+    const changedFields = Object.keys(updates);
+    const hasAsanaSyncableChanges = changedFields.some(field => ASANA_SYNCABLE_FIELDS.includes(field));
     
     await task.save();
 
     // Sync to Asana if requested and configured (skip if update came from webhook)
+    // OTIMIZAÇÃO: Só sincroniza se houver mudanças em campos sincronizáveis
     let attachmentErrors: string[] = [];
     
     if (validationResult.data.sendToAsana && isAsanaConfigured() && !fromWebhook) {
-      // Get current client and category names
-      const currentClient = await Client.findById(task.clientId);
-      const currentCategory = await Category.findById(task.categoryId);
-      
-      const clientName = currentClient?.name || task.clientName || 'Cliente não especificado';
-      const categoryName = currentCategory?.name || task.categoryName || 'Categoria não especificada';
-      
-      // Use existing Asana task GID if available (update), otherwise create new
-      // Use plain text values captured before save (not encrypted ones)
-      const asanaResult = await syncTaskToAsana({
-        title: plainTitle,
-        description: plainDescription,
-        clientName,
-        category: categoryName,
-        dueDate: task.deliveryDate ? new Date(task.deliveryDate) : undefined,
-        cost: task.cost,
-        status: task.status,
-      }, task.asanaTaskGid);
+      // Verifica se há mudanças em campos que sincronizam com Asana
+      if (!hasAsanaSyncableChanges && attachments.length === 0) {
+        console.log('[ASANA] Skipping sync - no syncable fields changed (cost, clientId, categoryId, observations only)');
+      } else {
+        // Get current client and category names
+        const currentClient = await Client.findById(task.clientId);
+        const currentCategory = await Category.findById(task.categoryId);
+        
+        const clientName = currentClient?.name || task.clientName || 'Cliente não especificado';
+        const categoryName = currentCategory?.name || task.categoryName || 'Categoria não especificada';
+        
+        // Use existing Asana task GID if available (update), otherwise create new
+        // Use plain text values captured before save (not encrypted ones)
+        const asanaResult = await syncTaskToAsana({
+          title: plainTitle,
+          description: plainDescription,
+          clientName,
+          category: categoryName,
+          dueDate: task.deliveryDate ? new Date(task.deliveryDate) : undefined,
+          startDate: plainRequestDate ? new Date(plainRequestDate) : undefined,
+          cost: task.cost,
+          status: task.status,
+        }, task.asanaTaskGid);
 
       if (asanaResult.success) {
         task.asanaSynced = true;
@@ -268,10 +281,11 @@ export async function PUT(
             console.log(`[ASANA] Successfully uploaded ${uploadResults.successful.length} attachment(s)`);
           }
         }
-      } else {
-        task.asanaSyncError = asanaResult.error;
+        } else {
+          task.asanaSyncError = asanaResult.error;
+        }
+        await task.save();
       }
-      await task.save();
     }
 
     await logAudit({

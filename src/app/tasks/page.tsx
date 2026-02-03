@@ -9,6 +9,7 @@ import { useUI } from '@/contexts/UIContext';
 import { useAsanaSyncedData } from '@/contexts/AsanaSyncContext';
 import Modal from '@/components/Modal';
 import TaskModal from '@/components/TaskModal';
+import { SyncColumnHeader, SyncColumnCell } from '@/components/SyncColumnHeader';
 
 interface Task {
   _id: string;
@@ -772,15 +773,22 @@ export default function TasksPage() {
             <table className="w-full min-w-200">
               <thead className="">
                 <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
-                    <button
-                      onClick={() => handleSort('requestDate')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    >
-                      DATA SOL.
-                      {renderSortIcon('requestDate')}
-                    </button>
-                  </th>
+                  {/* Colunas sincronizadas: DATA SOL., TÍTULO, ENTREGA, STATUS */}
+                  <SyncColumnHeader 
+                    isSynced 
+                    className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}
+                    sortButton={
+                      <button
+                        onClick={() => handleSort('requestDate')}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        DATA SOL.
+                        {renderSortIcon('requestDate')}
+                      </button>
+                    }
+                  >
+                    DATA SOL.
+                  </SyncColumnHeader>
                   <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Categoria</th>
                   <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                     <button
@@ -796,16 +804,27 @@ export default function TasksPage() {
                       SUBCLIENTE {i > 1 && i + 1}
                     </th>
                   ))}
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
-                    <button
-                      onClick={() => handleSort('title')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    >
-                      TÍTULO
-                      {renderSortIcon('title')}
-                    </button>
-                  </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>ENTREGA</th>
+                  <SyncColumnHeader 
+                    isSynced 
+                    className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}
+                    sortButton={
+                      <button
+                        onClick={() => handleSort('title')}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        TÍTULO
+                        {renderSortIcon('title')}
+                      </button>
+                    }
+                  >
+                    TÍTULO
+                  </SyncColumnHeader>
+                  <SyncColumnHeader 
+                    isSynced 
+                    className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}
+                  >
+                    ENTREGA
+                  </SyncColumnHeader>
                   <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
                     <button
                       onClick={() => handleSort('cost')}
@@ -815,18 +834,23 @@ export default function TasksPage() {
                       {renderSortIcon('cost')}
                     </button>
                   </th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>STATUS</th>
+                  <SyncColumnHeader 
+                    isSynced 
+                    className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}
+                  >
+                    STATUS
+                  </SyncColumnHeader>
                   <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>AÇÕES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {sortedTasks.map((task) => (
                   <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer" onClick={() => openViewModal(task)}>
-                    <td className={`text-sm whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                    <SyncColumnCell isSynced className={`text-sm whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <span className="font-medium text-foreground">
                         {formatDate(task.requestDate)}
                       </span>
-                    </td>
+                    </SyncColumnCell>
                     <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.categoryName}
                     </td>
@@ -842,7 +866,7 @@ export default function TasksPage() {
                         </div>
                       </td>
                     ))}
-                    <td className={`text-sm font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                    <SyncColumnCell isSynced className={`text-sm font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <div className="flex items-center gap-2">
                         <span>{task.title}</span>
                         {task.asanaSynced && (
@@ -851,18 +875,18 @@ export default function TasksPage() {
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                    </SyncColumnCell>
+                    <SyncColumnCell isSynced className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {task.deliveryDate ? formatDate(task.deliveryDate) : '-'}
-                    </td>
+                    </SyncColumnCell>
                     <td className={`text-sm font-medium text-foreground text-right whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       {formatCurrency(task.cost)}
                     </td>
-                    <td className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+                    <SyncColumnCell isSynced className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(task.status).color}`}>
                         {getStatusBadge(task.status).label}
                       </span>
-                    </td>
+                    </SyncColumnCell>
                     <td className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
                       <div className="flex items-center justify-end gap-2">
                         <button

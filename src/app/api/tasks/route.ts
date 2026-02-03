@@ -379,6 +379,7 @@ export async function POST(request: NextRequest) {
         clientName: client.name,
         category: category.name,
         dueDate: deliveryDate ? new Date(deliveryDate) : undefined,
+        startDate: requestDate ? new Date(requestDate) : undefined,
         cost,
         status: status || 'pending',
       });
