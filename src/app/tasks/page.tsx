@@ -304,10 +304,51 @@ export default function TasksPage() {
     setShowModal(true);
   };
 
+  // Sync editingTask with tasks list when it's updated (e.g., via Asana webhook)
+  useEffect(() => {
+    if (editingTask && showModal) {
+      const updatedTask = tasks.find(t => t._id === editingTask._id);
+      if (updatedTask) {
+        const hasChanged = 
+          updatedTask.title !== editingTask.title ||
+          updatedTask.description !== editingTask.description ||
+          updatedTask.status !== editingTask.status ||
+          updatedTask.deliveryDate !== editingTask.deliveryDate ||
+          updatedTask.cost !== editingTask.cost;
+        
+        if (hasChanged) {
+          console.log('[MODAL] Editing task updated externally, refreshing form');
+          setEditingTask(updatedTask);
+        }
+      }
+    }
+  }, [tasks, editingTask, showModal]);
+
   const openViewModal = (task: Task) => {
     setViewingTask(task);
     setShowViewModal(true);
   };
+
+  // Sync viewingTask with tasks list when it's updated (e.g., via Asana webhook)
+  useEffect(() => {
+    if (viewingTask && showViewModal) {
+      const updatedTask = tasks.find(t => t._id === viewingTask._id);
+      if (updatedTask) {
+        // Check if task was actually updated (compare timestamps or content)
+        const hasChanged = 
+          updatedTask.title !== viewingTask.title ||
+          updatedTask.description !== viewingTask.description ||
+          updatedTask.status !== viewingTask.status ||
+          updatedTask.deliveryDate !== viewingTask.deliveryDate ||
+          updatedTask.cost !== viewingTask.cost;
+        
+        if (hasChanged) {
+          console.log('[MODAL] Task updated, refreshing modal view');
+          setViewingTask(updatedTask);
+        }
+      }
+    }
+  }, [tasks, viewingTask, showViewModal]);
 
   const handleTaskModalClose = () => {
     setShowModal(false);

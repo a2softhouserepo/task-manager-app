@@ -125,27 +125,11 @@ async function moveTaskToSection(taskGid: string, sectionGid: string): Promise<v
 }
 
 /**
- * Build the task notes/description with metadata
+ * Build the task notes/description - now returns pure description without metadata
  */
 function buildTaskNotes(task: AsanaTaskData): string {
-  const lines = [
-    `Cliente: ${task.clientName}`,
-    `Categoria: ${task.category}`,
-    `Custo: ${task.cost}h`,
-  ];
-  
-  if (task.dueDate) {
-    lines.push(`Data de Entrega: ${new Date(task.dueDate).toLocaleDateString('pt-BR')}`);
-  }
-  
-  lines.push('');
-  lines.push('Descrição:');
-  lines.push(task.description);
-  lines.push('');
-  lines.push('---');
-  lines.push('Tarefa criada automaticamente pelo Task Manager');
-  
-  return lines.join('\n');
+  // Return only the description, identical to Task Manager
+  return task.description;
 }
 
 /**

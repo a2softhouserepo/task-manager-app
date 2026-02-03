@@ -131,6 +131,44 @@ async function processEvent(event: any): Promise<void> {
         task.title = asanaTask.name;
         changes.push('title');
       }
+      // Update description (notes)
+      // Now Asana notes contain only the pure description, identical to Task Manager
+      if (asanaTask.notes !== undefined) {
+        const newDescription = asanaTask.notes.trim();
+        
+        // Only update if description actually changed
+        if (newDescription && newDescription !== task.description) {
+          task.description = newDescription;
+          changes.push('description');
+        }
+      }
+      // Update description (notes)
+      // Asana notes may contain formatted content, we extract the description part
+      if (asanaTask.notes !== undefined) {
+        // Extract description from Asana notes (format: Client: X\nCategoria: Y\nCusto: Z\n\nDescription)
+        const notesLines = asanaTask.notes.split('\n');
+        let descriptionStartIndex = -1;
+        
+        // Find where the actual description starts (after metadata)
+        for (let i = 0; i < notesLines.length; i++) {
+          if (notesLines[i].trim() === '' && i > 0) {
+            // Empty line after metadata indicates description starts next
+            descriptionStartIndex = i + 1;
+            break;
+          }
+        }
+        
+        // Extract description (everything after the empty line)
+        const extractedDescription = descriptionStartIndex > -1
+          ? notesLines.slice(descriptionStartIndex).join('\n').trim()
+          : asanaTask.notes.trim();
+        
+        // Only update if description actually changed
+        if (extractedDescription && extractedDescription !== task.description) {
+          task.description = extractedDescription;
+          changes.push('description');
+        }
+      }
 
       // Update completion status
       if (asanaTask.completed !== undefined) {
