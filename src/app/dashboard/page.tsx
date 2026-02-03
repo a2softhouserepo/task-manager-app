@@ -7,6 +7,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import dynamic from 'next/dynamic';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
+import { useAsanaSyncedData } from '@/contexts/AsanaSyncContext';
 import { getChartColors } from '@/lib/chartColors';
 import TaskModal from '@/components/TaskModal';
 
@@ -118,6 +119,32 @@ export default function DashboardPage() {
   const userId = (session?.user as any)?.id;
   const canDelete = userRole === 'rootAdmin';
 
+  // Função de carregamento de tasks (declarada primeiro para uso em useAsanaSyncedData)
+  const loadTasks = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      
+      if (useCustomPeriod) {
+        if (filterStartDate) params.set('startDate', filterStartDate);
+        if (filterEndDate) params.set('endDate', filterEndDate);
+      } else {
+        params.set('month', filterMonth);
+      }
+      
+      if (filterClientId) params.set('clientId', filterClientId);
+      if (filterCategoryId) params.set('categoryId', filterCategoryId);
+      
+      const res = await fetch(`/api/tasks?${params.toString()}`);
+      const data = await res.json();
+      setTasks(data.tasks || []);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    }
+  }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, useCustomPeriod]);
+
+  // Integração com AsanaSyncContext - recarrega tasks automaticamente quando há atualizações do Asana
+  useAsanaSyncedData(loadTasks);
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
@@ -171,28 +198,6 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
-
-  const loadTasks = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      
-      if (useCustomPeriod) {
-        if (filterStartDate) params.set('startDate', filterStartDate);
-        if (filterEndDate) params.set('endDate', filterEndDate);
-      } else {
-        params.set('month', filterMonth);
-      }
-      
-      if (filterClientId) params.set('clientId', filterClientId);
-      if (filterCategoryId) params.set('categoryId', filterCategoryId);
-      
-      const res = await fetch(`/api/tasks?${params.toString()}`);
-      const data = await res.json();
-      setTasks(data.tasks || []);
-    } catch (error) {
-      console.error('Error loading tasks:', error);
-    }
-  }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, useCustomPeriod]);
 
   /**
    * OTIMIZAÇÃO: useMemo para evitar recálculos desnecessários da ordenação

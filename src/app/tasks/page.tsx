@@ -6,6 +6,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
+import { useAsanaSyncedData } from '@/contexts/AsanaSyncContext';
 import Modal from '@/components/Modal';
 import TaskModal from '@/components/TaskModal';
 
@@ -59,7 +60,6 @@ export default function TasksPage() {
   const { density } = useUI();
   const isCompact = density === 'compact';
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [pollingInterval, setPollingInterval] = useState(3000); // Default 3 seconds
   const [clients, setClients] = useState<Client[]>([]);
   const [clientsTree, setClientsTree] = useState<Client[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -70,10 +70,6 @@ export default function TasksPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [maxSubClientLevels, setMaxSubClientLevels] = useState(0);
-  
-  // Polling state for real-time Asana sync
-  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
-  const [pollingEnabled, setPollingEnabled] = useState(true);
   
   // Ordenação
   const [sortColumn, setSortColumn] = useState<'requestDate' | 'clientName' | 'title' | 'cost'>('requestDate');
@@ -118,25 +114,6 @@ export default function TasksPage() {
   const userId = (session?.user as any)?.id;
   const canDelete = userRole === 'rootAdmin';
 
-  // Load polling configuration from settings
-  useEffect(() => {
-    async function loadPollingConfig() {
-      try {
-        const res = await fetch('/api/settings/asana');
-        if (res.ok) {
-          const data = await res.json();
-          const intervalSeconds = data.pollingIntervalSeconds || 3;
-          setPollingInterval(intervalSeconds * 1000);
-        }
-      } catch (error) {
-        console.debug('[POLLING] Using default interval');
-      }
-    }
-    if (status === 'authenticated') {
-      loadPollingConfig();
-    }
-  }, [status]);
-
   // Declare loadTasks first so it can be used in useEffects below
   const loadTasks = useCallback(async () => {
     try {
@@ -158,15 +135,6 @@ export default function TasksPage() {
       const tasksData = data.tasks || [];
       setTasks(tasksData);
       
-      // Update lastUpdate timestamp when tasks are loaded (use updatedAt for webhook changes)
-      if (tasksData.length > 0) {
-        const mostRecent = tasksData.reduce((latest: string, task: Task) => {
-          const taskUpdated = task.updatedAt || task.createdAt;
-          return taskUpdated > latest ? taskUpdated : latest;
-        }, tasksData[0].updatedAt || tasksData[0].createdAt);
-        setLastUpdate(mostRecent);
-      }
-      
       // Calcular número máximo de níveis de subclientes
       const maxLevels = tasksData.reduce((max: number, task: Task) => {
         const levels = task.subClientLevels?.length || 0;
@@ -177,6 +145,9 @@ export default function TasksPage() {
       console.error('Error loading tasks:', error);
     }
   }, [filterMonth, filterStartDate, filterEndDate, filterClientId, filterCategoryId, filterStatus, useCustomPeriod]);
+
+  // Integração com AsanaSyncContext - recarrega tasks automaticamente quando há atualizações
+  useAsanaSyncedData(loadTasks);
 
   const loadData = async () => {
     try {
@@ -211,62 +182,6 @@ export default function TasksPage() {
       loadData();
     }
   }, [status, router]);
-
-  /**
-   * Polling for real-time updates from Asana webhooks
-   * Checks every POLLING_INTERVAL ms if there are new updates
-   * Uses ref to track lastUpdate to avoid recreating the interval
-   */
-  const lastUpdateRef = React.useRef<string | null>(null);
-  
-  // Keep ref in sync with state
-  useEffect(() => {
-    lastUpdateRef.current = lastUpdate;
-  }, [lastUpdate]);
-  
-  useEffect(() => {
-    if (status !== 'authenticated' || !pollingEnabled) return;
-
-    const checkForUpdates = async () => {
-      try {
-        const currentLastUpdate = lastUpdateRef.current;
-        const url = currentLastUpdate 
-          ? `/api/tasks/updates?since=${encodeURIComponent(currentLastUpdate)}`
-          : '/api/tasks/updates';
-        
-        const res = await fetch(url);
-        if (!res.ok) return;
-        
-        const data = await res.json();
-        
-        if (data.hasUpdates || (!currentLastUpdate && data.lastUpdate)) {
-          // There are new updates, reload tasks
-          console.log('[POLLING] Updates detected, reloading tasks...');
-          await loadTasks();
-        }
-        
-        // Update the last known timestamp
-        if (data.lastUpdate && data.lastUpdate !== currentLastUpdate) {
-          setLastUpdate(data.lastUpdate);
-        }
-      } catch (error) {
-        // Silently fail polling errors to not disrupt user experience
-        console.debug('[POLLING] Error checking for updates:', error);
-      }
-    };
-
-    // Initial check after short delay to let initial load complete
-    const initialTimeout = setTimeout(checkForUpdates, 1000);
-
-    // Set up interval
-    const intervalId = setInterval(checkForUpdates, pollingInterval);
-
-    // Cleanup on unmount or when dependencies change
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(intervalId);
-    };
-  }, [status, pollingEnabled, pollingInterval, loadTasks]);
 
   /**
    * OTIMIZAÇÃO: Debouncing de 300ms para evitar múltiplas requests

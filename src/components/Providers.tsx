@@ -2,6 +2,7 @@
 
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
 import { UIProvider, useUI } from '@/contexts/UIContext';
+import { AsanaSyncProvider } from '@/contexts/AsanaSyncContext';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import Header from './Header';
@@ -147,7 +148,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
     <UIProvider>
       <SessionExpirationChecker>
         <MaintenanceModeChecker>
-          <AppWrapper>{children}</AppWrapper>
+          <AsanaSyncProvider>
+            <AppWrapper>{children}</AppWrapper>
+          </AsanaSyncProvider>
         </MaintenanceModeChecker>
       </SessionExpirationChecker>
     </UIProvider>
