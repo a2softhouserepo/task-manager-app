@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { formatCurrency, formatDate, getMonthName } from '@/lib/utils';
 import { useUI } from '@/contexts/UIContext';
@@ -28,6 +28,7 @@ interface Task {
   asanaTaskGid?: string;
   createdBy: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface Client {
@@ -52,8 +53,8 @@ const STATUS_OPTIONS = [
   { value: 'cancelled', label: 'Cancelada', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
 ];
 
-// Polling interval for real-time updates (5 seconds)
-const POLLING_INTERVAL = 5000;
+// Polling interval for real-time updates (3 seconds for faster response)
+const POLLING_INTERVAL = 3000;
 
 export default function TasksPage() {
   const { data: session, status } = useSession();
@@ -140,11 +141,12 @@ export default function TasksPage() {
       const tasksData = data.tasks || [];
       setTasks(tasksData);
       
-      // Update lastUpdate timestamp when tasks are loaded
+      // Update lastUpdate timestamp when tasks are loaded (use updatedAt for webhook changes)
       if (tasksData.length > 0) {
         const mostRecent = tasksData.reduce((latest: string, task: Task) => {
-          return task.createdAt > latest ? task.createdAt : latest;
-        }, tasksData[0].createdAt);
+          const taskUpdated = task.updatedAt || task.createdAt;
+          return taskUpdated > latest ? taskUpdated : latest;
+        }, tasksData[0].updatedAt || tasksData[0].createdAt);
         setLastUpdate(mostRecent);
       }
       
@@ -196,14 +198,23 @@ export default function TasksPage() {
   /**
    * Polling for real-time updates from Asana webhooks
    * Checks every POLLING_INTERVAL ms if there are new updates
+   * Uses ref to track lastUpdate to avoid recreating the interval
    */
+  const lastUpdateRef = React.useRef<string | null>(null);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    lastUpdateRef.current = lastUpdate;
+  }, [lastUpdate]);
+  
   useEffect(() => {
     if (status !== 'authenticated' || !pollingEnabled) return;
 
     const checkForUpdates = async () => {
       try {
-        const url = lastUpdate 
-          ? `/api/tasks/updates?since=${encodeURIComponent(lastUpdate)}`
+        const currentLastUpdate = lastUpdateRef.current;
+        const url = currentLastUpdate 
+          ? `/api/tasks/updates?since=${encodeURIComponent(currentLastUpdate)}`
           : '/api/tasks/updates';
         
         const res = await fetch(url);
@@ -211,14 +222,14 @@ export default function TasksPage() {
         
         const data = await res.json();
         
-        if (data.hasUpdates || (!lastUpdate && data.lastUpdate)) {
+        if (data.hasUpdates || (!currentLastUpdate && data.lastUpdate)) {
           // There are new updates, reload tasks
           console.log('[POLLING] Updates detected, reloading tasks...');
           await loadTasks();
         }
         
         // Update the last known timestamp
-        if (data.lastUpdate) {
+        if (data.lastUpdate && data.lastUpdate !== currentLastUpdate) {
           setLastUpdate(data.lastUpdate);
         }
       } catch (error) {
@@ -227,15 +238,18 @@ export default function TasksPage() {
       }
     };
 
-    // Initial check
-    checkForUpdates();
+    // Initial check after short delay to let initial load complete
+    const initialTimeout = setTimeout(checkForUpdates, 1000);
 
     // Set up interval
     const intervalId = setInterval(checkForUpdates, POLLING_INTERVAL);
 
     // Cleanup on unmount or when dependencies change
-    return () => clearInterval(intervalId);
-  }, [status, pollingEnabled, lastUpdate, loadTasks]);
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(intervalId);
+    };
+  }, [status, pollingEnabled, loadTasks]);
 
   /**
    * OTIMIZAÇÃO: Debouncing de 300ms para evitar múltiplas requests

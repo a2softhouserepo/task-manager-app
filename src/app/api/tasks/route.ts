@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     // Query principal com otimizações
     let tasksQuery = Task.find(query)
       .sort({ requestDate: -1 })
-      .select('requestDate clientId clientName categoryId categoryName categoryIcon categoryColor title description deliveryDate cost observations status asanaTaskGid asanaSynced createdBy createdAt');
+      .select('requestDate clientId clientName categoryId categoryName categoryIcon categoryColor title description deliveryDate cost observations status asanaTaskGid asanaSynced createdBy createdAt updatedAt');
     
     // Aplicar paginação se solicitada
     if (paginate) {
