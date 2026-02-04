@@ -21,7 +21,7 @@ export interface ITask {
   deliveryDate?: Date; // Data de entrega
   cost: number;
   observations?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'qa' | 'completed' | 'cancelled';
   asanaTaskGid?: string; // Asana task ID for updates
   asanaSynced: boolean; // Whether task was synced to Asana
   asanaSyncError?: string; // Error message if sync failed
@@ -95,7 +95,7 @@ const TaskSchema = new Schema<ITask>(
     },
     status: {
       type: String,
-      enum: ['pending', 'in_progress', 'completed', 'cancelled'],
+      enum: ['pending', 'in_progress', 'qa', 'completed', 'cancelled'],
       default: 'pending',
     },
     asanaTaskGid: {

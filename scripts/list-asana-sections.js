@@ -64,6 +64,7 @@ async function listSections() {
     const mapping = {
       pending: null,
       in_progress: null,
+      qa: null,
       completed: null,
       cancelled: null,
     };
@@ -74,6 +75,8 @@ async function listSections() {
         mapping.pending = section.gid;
       } else if (name.includes('progresso') || name.includes('progress') || name.includes('doing') || name.includes('em andamento')) {
         mapping.in_progress = section.gid;
+      } else if (name.includes('qa') || name.includes('review') || name.includes('revisão') || name.includes('teste')) {
+        mapping.qa = section.gid;
       } else if (name.includes('concluíd') || name.includes('complet') || name.includes('done') || name.includes('feit')) {
         mapping.completed = section.gid;
       } else if (name.includes('cancelad') || name.includes('cancel')) {
@@ -83,6 +86,7 @@ async function listSections() {
 
     console.log(`ASANA_SECTION_PENDING=${mapping.pending || ''}`);
     console.log(`ASANA_SECTION_IN_PROGRESS=${mapping.in_progress || ''}`);
+    console.log(`ASANA_SECTION_QA=${mapping.qa || ''}`);
     console.log(`ASANA_SECTION_COMPLETED=${mapping.completed || ''}`);
     console.log(`ASANA_SECTION_CANCELLED=${mapping.cancelled || ''}`);
     

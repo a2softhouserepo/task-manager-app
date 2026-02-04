@@ -228,7 +228,7 @@ const createTaskSchema = z.object({
   deliveryDate: z.string().or(z.date()).optional(),
   cost: z.number().min(0, 'Custo não pode ser negativo'),
   observations: z.string().max(2000, 'Observações muito longas').optional(),
-  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
+  status: z.enum(['pending', 'in_progress', 'qa', 'completed', 'cancelled']).optional(),
   sendToAsana: z.boolean().optional(),
 });
 

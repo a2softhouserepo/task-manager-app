@@ -32,7 +32,7 @@ export interface AsanaTaskData {
   dueDate?: Date;       // deliveryDate -> due_on (Asana)
   startDate?: Date;     // requestDate -> start_on (Asana)
   cost?: number;
-  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status?: 'pending' | 'in_progress' | 'qa' | 'completed' | 'cancelled';
 }
 
 interface AsanaResult {
@@ -108,6 +108,7 @@ function getSectionGidForStatus(status?: string): string | null {
   const sectionMap: Record<string, string | undefined> = {
     'pending': process.env.ASANA_SECTION_PENDING,
     'in_progress': process.env.ASANA_SECTION_IN_PROGRESS,
+    'qa': process.env.ASANA_SECTION_QA,
     'completed': process.env.ASANA_SECTION_COMPLETED,
     'cancelled': process.env.ASANA_SECTION_CANCELLED,
   };

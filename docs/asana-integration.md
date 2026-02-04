@@ -62,7 +62,7 @@ ASANA_PROJECT_GID=1234567890123456
 ### 2. Obter GIDs das Seções
 
 ```bash
-npm run asana:sections
+npm run asana:sections:list
 ```
 
 Copie os GIDs sugeridos para o `.env.local`:
@@ -70,6 +70,7 @@ Copie os GIDs sugeridos para o `.env.local`:
 ```env
 ASANA_SECTION_PENDING=1234567890123456
 ASANA_SECTION_IN_PROGRESS=1234567890123457
+ASANA_SECTION_QA=1234567890123460
 ASANA_SECTION_COMPLETED=1234567890123458
 ASANA_SECTION_CANCELLED=1234567890123459
 ```

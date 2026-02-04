@@ -79,6 +79,9 @@ function mapSectionToStatus(sectionName: string): string {
   if (normalizedName.includes('progress') || normalizedName.includes('andamento') || normalizedName === 'in_progress') {
     return 'in_progress';
   }
+  if (normalizedName.includes('qa') || normalizedName.includes('review') || normalizedName.includes('revisão') || normalizedName === 'qa') {
+    return 'qa';
+  }
   if (normalizedName.includes('complet') || normalizedName.includes('conclu') || normalizedName.includes('done') || normalizedName === 'completed') {
     return 'completed';
   }
@@ -101,14 +104,12 @@ async function processEvent(event: any): Promise<void> {
   }
 
   const taskGid = resource.gid;
-  console.log(`[ASANA WEBHOOK] Processing ${action} event for task ${taskGid}`);
 
   // Find the task in our database by Asana GID
   await dbConnect();
   const task = await Task.findOne({ asanaTaskGid: taskGid });
 
   if (!task) {
-    console.log(`[ASANA WEBHOOK] Task with Asana GID ${taskGid} not found in database, skipping`);
     return;
   }
 
@@ -183,7 +184,7 @@ async function processEvent(event: any): Promise<void> {
       if (asanaTask.memberships && asanaTask.memberships.length > 0) {
         const section = asanaTask.memberships[0]?.section;
         if (section?.name) {
-          const newStatus = mapSectionToStatus(section.name) as 'pending' | 'in_progress' | 'completed' | 'cancelled';
+          const newStatus = mapSectionToStatus(section.name) as 'pending' | 'in_progress' | 'qa' | 'completed' | 'cancelled';
           if (task.status !== newStatus) {
             task.status = newStatus;
             changes.push('status');
@@ -231,10 +232,6 @@ async function processEvent(event: any): Promise<void> {
             changes,
           },
         });
-
-        console.log(`[ASANA WEBHOOK] Updated task ${task._id}: ${changes.join(', ')}`);
-      } else {
-        console.log(`[ASANA WEBHOOK] No changes detected for task ${task._id}`);
       }
       break;
     }
@@ -262,20 +259,17 @@ async function processEvent(event: any): Promise<void> {
             changes: ['status'],
           },
         });
-
-        console.log(`[ASANA WEBHOOK] Marked task ${task._id} as cancelled (deleted in Asana)`);
       }
       break;
     }
 
     case 'removed': {
       // Task was removed from the project (but not deleted)
-      console.log(`[ASANA WEBHOOK] Task ${task._id} was removed from Asana project`);
       break;
     }
 
     default:
-      console.log(`[ASANA WEBHOOK] Unknown action: ${action}`);
+      break;
   }
 }
 
@@ -290,10 +284,6 @@ export async function POST(request: NextRequest) {
     // Check for handshake (initial webhook registration)
     const hookSecret = request.headers.get('x-hook-secret');
     if (hookSecret) {
-      console.log('[ASANA WEBHOOK] Handshake received, storing secret', hookSecret);
-      console.log('[ASANA WEBHOOK] 🔐 Secret:', hookSecret);
-      console.log('[ASANA WEBHOOK] Add to .env.local: ASANA_WEBHOOK_SECRET=' + hookSecret);
-      
       // Store the secret for future signature verification
       webhookSecret = hookSecret;
       
@@ -319,7 +309,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
     } else if (!storedSecret) {
-      console.warn('[ASANA WEBHOOK] No secret available for signature verification');
       // In development, you might want to allow this
       // In production, you should reject unsigned requests
       if (process.env.NODE_ENV === 'production') {
@@ -330,8 +319,6 @@ export async function POST(request: NextRequest) {
     // Parse the events
     const body = JSON.parse(rawBody);
     const events = body.events || [];
-
-    console.log(`[ASANA WEBHOOK] Received ${events.length} events`);
 
     // Process each event
     for (const event of events) {
