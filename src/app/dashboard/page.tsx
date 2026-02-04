@@ -647,17 +647,14 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground">
-              Tarefas Pendentes
+              Tarefas não concluídas
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Tarefas pendentes e em andamento (desde sempre)
-            </p>
           </div>
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 w-full sm:w-auto justify-start sm:justify-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:w-auto">
             <select
               value={filterClientId}
               onChange={(e) => setFilterClientId(e.target.value)}
-              className="input-soft w-full sm:w-auto"
+              className="input-soft"
             >
               <option value="">Todos os clientes</option>
               {buildClientOptions(clientsTree)}
@@ -666,7 +663,7 @@ export default function DashboardPage() {
             <select
               value={filterCategoryId}
               onChange={(e) => setFilterCategoryId(e.target.value)}
-              className="input-soft w-full sm:w-auto"
+              className="input-soft"
             >
               <option value="">Todas as categorias</option>
               {categories.map((c) => (
@@ -680,10 +677,10 @@ export default function DashboardPage() {
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4 my-4">
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">
-              {sortedTasks.length} tarefa(s) ativa(s)
+              {sortedTasks.length} tarefa{sortedTasks.length !== 1 ? 's' : ''} ativa{sortedTasks.length !== 1 ? 's' : ''}
               {tasks.length > sortedTasks.length && (
                 <span className="text-xs text-muted-foreground ml-2">
-                  ({tasks.length - sortedTasks.length} concluída(s)/cancelada(s) oculta(s))
+                  ({tasks.length - sortedTasks.length} oculta{(tasks.length - sortedTasks.length) !== 1 ? 's' : ''})
                 </span>
               )}
             </span>
