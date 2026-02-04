@@ -9,7 +9,8 @@ import { useUI } from '@/contexts/UIContext';
 import { useAsanaSyncedData } from '@/contexts/AsanaSyncContext';
 import Modal from '@/components/Modal';
 import TaskModal from '@/components/TaskModal';
-import { SyncColumnHeader, SyncColumnCell } from '@/components/SyncColumnHeader';
+import { DataTable } from '@/components/ui/Table';
+import { StatusBadge, DEFAULT_STATUS_OPTIONS } from '@/components/ui/StatusBadge';
 
 interface Task {
   _id: string;
@@ -48,13 +49,6 @@ interface Category {
   icon: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'pending', label: 'Pendente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
-  { value: 'in_progress', label: 'Em Andamento', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-  { value: 'completed', label: 'Concluída', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  { value: 'cancelled', label: 'Cancelada', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
-];
-
 export default function TasksPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -71,6 +65,7 @@ export default function TasksPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [maxSubClientLevels, setMaxSubClientLevels] = useState(0);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   
   // Ordenação
   const [sortColumn, setSortColumn] = useState<'requestDate' | 'clientName' | 'title' | 'cost'>('requestDate');
@@ -248,6 +243,31 @@ export default function TasksPage() {
     }
   };
 
+  // Atualização de status inline
+  const handleStatusChange = async (taskId: string, newStatus: string) => {
+    setUpdatingStatus(taskId);
+    
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (res.ok) {
+        loadTasks();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao atualizar status');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Erro ao atualizar status');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
   // Função para construir opções hierárquicas de clientes
   const buildClientOptions = (clientList: Client[], level: number = 0): React.ReactElement[] => {
     const options: React.ReactElement[] = [];
@@ -266,33 +286,6 @@ export default function TasksPage() {
     });
     
     return options;
-  };
-
-  // Função para renderizar ícone de ordenação
-  const renderSortIcon = (column: 'requestDate' | 'clientName' | 'title' | 'cost') => {
-    const isActive = sortColumn === column;
-    const isAsc = sortDirection === 'asc';
-    
-    return (
-      <div className="flex flex-col">
-        <svg 
-          className={`w-3 h-3 ${isActive && isAsc ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} transition-colors`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        </svg>
-        <svg 
-          className={`w-3 h-3 -mt-1 ${isActive && !isAsc ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} transition-colors`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
-    );
   };
 
   const openNewModal = () => {
@@ -381,11 +374,6 @@ export default function TasksPage() {
     } finally {
       setDeleting(null);
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const option = STATUS_OPTIONS.find(s => s.value === status);
-    return option || STATUS_OPTIONS[0];
   };
 
   const openPdfModal = () => {
@@ -480,8 +468,8 @@ export default function TasksPage() {
         filterText += `Categoria: ${category?.name || 'N/A'} | `;
       }
       if (filterStatus) {
-        const statusLabel = getStatusBadge(filterStatus).label;
-        filterText += `Status: ${statusLabel}`;
+        const statusOption = DEFAULT_STATUS_OPTIONS.find(s => s.value === filterStatus);
+        filterText += `Status: ${statusOption?.label || filterStatus}`;
       }
       if (filterText) {
         doc.text(filterText.replace(/\| $/, ''), 14, currentY);
@@ -586,7 +574,8 @@ export default function TasksPage() {
                 row.push(formatCurrency(task.cost));
                 break;
               case 'status':
-                row.push(getStatusBadge(task.status).label);
+                const statusOpt = DEFAULT_STATUS_OPTIONS.find(s => s.value === task.status);
+                row.push(statusOpt?.label || task.status);
                 break;
               case 'observations':
                 row.push(task.observations?.substring(0, 40) || '-');
@@ -747,7 +736,7 @@ export default function TasksPage() {
                 className="input-soft w-full sm:w-auto min-w-[140px]"
               >
                 <option value="">Todos os status</option>
-                {STATUS_OPTIONS.map((s) => (
+                {DEFAULT_STATUS_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
@@ -769,165 +758,104 @@ export default function TasksPage() {
 
         {/* Lista */}
         <section id="tasks-table" className={`card-soft overflow-hidden ${isCompact ? 'p-3' : 'p-6'}`}>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-200">
-              <thead className="">
-                <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {/* Colunas sincronizadas: DATA SOL., TÍTULO, ENTREGA, STATUS */}
-                  <SyncColumnHeader 
-                    isSynced 
-                    className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}
-                    sortButton={
-                      <button
-                        onClick={() => handleSort('requestDate')}
-                        className="flex items-center gap-1 hover:text-foreground transition-colors"
-                      >
-                        DATA SOL.
-                        {renderSortIcon('requestDate')}
-                      </button>
-                    }
-                  >
-                    DATA SOL.
-                  </SyncColumnHeader>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>Categoria</th>
-                  <th className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
-                    <button
-                      onClick={() => handleSort('clientName')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    >
-                      CLIENTE
-                      {renderSortIcon('clientName')}
-                    </button>
-                  </th>
+          <DataTable 
+            density={density} 
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSortChange={(column, direction) => {
+              setSortColumn(column as 'requestDate' | 'clientName' | 'title' | 'cost');
+              setSortDirection(direction);
+            }}
+          >
+            <DataTable.Header>
+              <DataTable.Column sortKey="requestDate" synced>DATA SOL.</DataTable.Column>
+              <DataTable.Column>CATEGORIA</DataTable.Column>
+              <DataTable.Column sortKey="clientName">CLIENTE</DataTable.Column>
+              {maxSubClientLevels > 0 && Array.from({ length: maxSubClientLevels }).map((_, i) => (
+                <DataTable.Column key={`subclient-header-${i}`}>
+                  SUBCLIENTE {i > 0 ? i + 1 : ''}
+                </DataTable.Column>
+              ))}
+              <DataTable.Column sortKey="title" synced>TÍTULO</DataTable.Column>
+              <DataTable.Column synced>ENTREGA</DataTable.Column>
+              <DataTable.Column sortKey="cost" align="right">CUSTO</DataTable.Column>
+              <DataTable.Column synced>STATUS</DataTable.Column>
+              <DataTable.Column align="right">AÇÕES</DataTable.Column>
+            </DataTable.Header>
+            <DataTable.Body emptyMessage="Nenhuma tarefa encontrada no período selecionado" colSpan={8 + maxSubClientLevels}>
+              {sortedTasks.map((task) => (
+                <DataTable.Row key={task._id} onClick={() => openViewModal(task)}>
+                  <DataTable.Cell synced={task.asanaSynced}>
+                    {formatDate(task.requestDate)}
+                  </DataTable.Cell>
+                  <DataTable.Cell>
+                    {task.categoryName}
+                  </DataTable.Cell>
+                  <DataTable.Cell truncate title={task.rootClientName || task.clientName}>
+                    {task.rootClientName || task.clientName}
+                  </DataTable.Cell>
                   {maxSubClientLevels > 0 && Array.from({ length: maxSubClientLevels }).map((_, i) => (
-                    <th key={`subclient-header-${i}`} className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
-                      SUBCLIENTE {i > 1 && i + 1}
-                    </th>
+                    <DataTable.Cell key={`subclient-${task._id}-${i}`} truncate title={task.subClientLevels?.[i] || ''}>
+                      {task.subClientLevels?.[i] || '-'}
+                    </DataTable.Cell>
                   ))}
-                  <SyncColumnHeader 
-                    isSynced 
-                    className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}
-                    sortButton={
+                  <DataTable.Cell synced={task.asanaSynced} truncate title={task.title} className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{task.title}</span>
+                      {task.asanaSynced && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
+                          📧
+                        </span>
+                      )}
+                    </div>
+                  </DataTable.Cell>
+                  <DataTable.Cell synced={task.asanaSynced}>
+                    {task.deliveryDate ? formatDate(task.deliveryDate) : '-'}
+                  </DataTable.Cell>
+                  <DataTable.Cell align="right" className="font-medium">
+                    {formatCurrency(task.cost)}
+                  </DataTable.Cell>
+                  <DataTable.Cell synced={task.asanaSynced}>
+                    <StatusBadge 
+                      status={task.status} 
+                      editable 
+                      loading={updatingStatus === task._id}
+                      onChange={(newStatus) => handleStatusChange(task._id, newStatus)}
+                    />
+                  </DataTable.Cell>
+                  <DataTable.Cell align="right">
+                    <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => handleSort('title')}
-                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                        onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
+                        className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
+                        title="Editar"
                       >
-                        TÍTULO
-                        {renderSortIcon('title')}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </button>
-                    }
-                  >
-                    TÍTULO
-                  </SyncColumnHeader>
-                  <SyncColumnHeader 
-                    isSynced 
-                    className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}
-                  >
-                    ENTREGA
-                  </SyncColumnHeader>
-                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>
-                    <button
-                      onClick={() => handleSort('cost')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
-                    >
-                      CUSTO
-                      {renderSortIcon('cost')}
-                    </button>
-                  </th>
-                  <SyncColumnHeader 
-                    isSynced 
-                    className={`whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}
-                  >
-                    STATUS
-                  </SyncColumnHeader>
-                  <th className={`text-right whitespace-nowrap ${isCompact ? 'px-3 py-2' : 'px-6 py-3'}`}>AÇÕES</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {sortedTasks.map((task) => (
-                  <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer" onClick={() => openViewModal(task)}>
-                    <SyncColumnCell isSynced className={`text-sm whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <span className="font-medium text-foreground">
-                        {formatDate(task.requestDate)}
-                      </span>
-                    </SyncColumnCell>
-                    <td className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      {task.categoryName}
-                    </td>
-                    <td className={`text-sm text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <div className="max-w-xs truncate" title={task.rootClientName || task.clientName}>
-                        {(task.rootClientName || task.clientName).length > 20 ? `${(task.rootClientName || task.clientName).substring(0, 20)}...` : (task.rootClientName || task.clientName)}
-                      </div>
-                    </td>
-                    {maxSubClientLevels > 0 && Array.from({ length: maxSubClientLevels }).map((_, i) => (
-                      <td key={`subclient-${task._id}-${i}`} className={`text-sm text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                        <div className="max-w-xs truncate" title={task.subClientLevels?.[i] || ''}>
-                          {task.subClientLevels?.[i] || '-'}
-                        </div>
-                      </td>
-                    ))}
-                    <SyncColumnCell isSynced className={`text-sm font-medium text-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <div className="flex items-center gap-2">
-                        <span>{task.title}</span>
-                        {task.asanaSynced && (
-                          <span className="text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
-                            📧
-                          </span>
-                        )}
-                      </div>
-                    </SyncColumnCell>
-                    <SyncColumnCell isSynced className={`text-sm whitespace-nowrap text-muted-foreground ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      {task.deliveryDate ? formatDate(task.deliveryDate) : '-'}
-                    </SyncColumnCell>
-                    <td className={`text-sm font-medium text-foreground text-right whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      {formatCurrency(task.cost)}
-                    </td>
-                    <SyncColumnCell isSynced className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(task.status).color}`}>
-                        {getStatusBadge(task.status).label}
-                      </span>
-                    </SyncColumnCell>
-                    <td className={`whitespace-nowrap ${isCompact ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-                      <div className="flex items-center justify-end gap-2">
+                      {canDelete && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
-                          className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-muted-foreground dark:hover:text-blue-400 dark:hover:bg-blue-950/30"
-                          title="Editar"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(task._id); }}
+                          disabled={deleting === task._id}
+                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
+                          title="Excluir"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
+                          {deleting === task._id ? (
+                            <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
                         </button>
-                        {canDelete && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(task._id); }}
-                            disabled={deleting === task._id}
-                            className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-muted-foreground dark:hover:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50"
-                            title="Excluir"
-                          >
-                            {deleting === task._id ? (
-                              <div className="w-5 h-5 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                            ) : (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {tasks.length === 0 && (
-                  <tr>
-                    <td colSpan={8 + maxSubClientLevels} className={`text-center text-muted-foreground ${isCompact ? 'px-3 py-8' : 'px-4 py-12'}`}>
-                      Nenhuma tarefa encontrada no período selecionado
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                    </div>
+                  </DataTable.Cell>
+                </DataTable.Row>
+              ))}
+            </DataTable.Body>
+          </DataTable>
         </section>
 
         {/* Modal de Visualização */}
@@ -958,9 +886,7 @@ export default function TasksPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-muted-foreground">Status</label>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(viewingTask.status).color}`}>
-                        {getStatusBadge(viewingTask.status).label}
-                      </span>
+                      <StatusBadge status={viewingTask.status} />
                     </div>
                   </div>
                 </div>
