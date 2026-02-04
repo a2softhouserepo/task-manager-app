@@ -1,0 +1,40 @@
+/* Força fonte monospace apenas em blocos de código */
+code,
+pre,
+pre code {
+  font-family: 'SF Mono', Menlo, Monaco, Consolas, 'Courier New', monospace !important;
+  font-size: 0.9em;
+}
+
+/* Garante que tabelas ASCII fiquem alinhadas */
+pre {
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* Mantém o resto do texto com fonte normal */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Melhorias visuais para o preview */
+h1, h2, h3 {
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 0.3em;
+}
+
+blockquote {
+  border-left: 4px solid #dfe2e5;
+  padding-left: 1em;
+  color: #6a737d;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+table th,
+table td {
+  border: 1px solid #dfe2e5;
+  padding: 6px 13px;
+}

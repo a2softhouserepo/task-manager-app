@@ -140,19 +140,22 @@ node scripts/clear-audit-logs.js# Limpa logs de auditoria
 ## Tecnologias
 
 - **Next.js 16** - Framework React com App Router
-- **MongoDB/Mongoose** - Banco de dados
-- **NextAuth.js** - Autenticação
-- **Tailwind CSS** - Estilização
-- **Recharts** - Gráficos
+- **React 19** - Biblioteca de UI
+- **MongoDB/Mongoose** - Banco de dados NoSQL
+- **NextAuth.js** - Autenticação JWT + Sessions
+- **Tailwind CSS 4** - Estilização utility-first
+- **Recharts** - Gráficos interativos
 - **jsPDF + AutoTable** - Geração de PDF
-- **Nodemailer** - Envio de e-mails
-- **Zod** - Validação de dados
+- **Nodemailer** - Envio de e-mails SMTP
+- **Zod** - Validação de schemas
 - **bcryptjs** - Hash de senhas
+- **lru-cache** - Cache LRU para otimização
+- **use-debounce** - Debouncing de inputs
 - **AES-256-GCM** - Criptografia de dados sensíveis
 
 ## Segurança
 
-- Senhas hasheadas com bcrypt (12 rounds)
+- Senhas hasheadas com bcrypt (10 rounds)
 - Dados sensíveis criptografados com AES-256-GCM
 - Blind indexes para busca em campos criptografados
 - JWT com cookies HTTP-only
@@ -165,10 +168,13 @@ node scripts/clear-audit-logs.js# Limpa logs de auditoria
 Todas as coleções usam o prefixo `tasks-`:
 
 - `tasks-users` - Usuários do sistema
-- `tasks-clients` - Clientes
+- `tasks-clients` - Clientes (com suporte a hierarquia)
 - `tasks-categories` - Categorias de serviços
 - `tasks-tasks` - Tarefas/serviços
 - `tasks-audit-logs` - Logs de auditoria
+- `tasks-backups` - Backups do sistema
+- `tasks-system-config` - Configurações dinâmicas
+- `tasks-login-attempts` - Tentativas de login (TTL: 1h)
 
 ## Licença
 

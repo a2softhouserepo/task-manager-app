@@ -69,6 +69,19 @@ As configurações são cacheadas no `localStorage` do navegador:
 |-------|------|--------|-----------|
 | `app_name` | string | `Task Manager` | Nome da aplicação |
 
+### Categoria: Asana
+
+| Chave | Tipo | Padrão | Descrição |
+|-------|------|--------|-----------|
+| `asana_enabled` | boolean | `false` | Habilita integração com Asana |
+| `asana_project_gid` | string | - | GID do projeto Asana para sincronização |
+| `asana_workspace_gid` | string | - | GID do workspace Asana |
+| `asana_default_assignee` | string | - | Email do assignee padrão no Asana |
+| `asana_sync_on_create` | boolean | `true` | Sincronizar automaticamente ao criar tarefas |
+| `asana_sync_on_update` | boolean | `true` | Sincronizar automaticamente ao atualizar tarefas |
+
+> **Nota:** As configurações do Asana também podem ser definidas via variáveis de ambiente (`ASANA_TOKEN`, `ASANA_PROJECT_GID`, etc). Veja [asana-integration.md](asana-integration.md) para detalhes.
+
 ## Setup Inicial
 
 ### 1. Popular configurações padrão

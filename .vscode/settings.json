@@ -1,0 +1,10 @@
+{
+  "markdown.preview.fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif",
+  "markdown.preview.styles": [
+    "${workspaceFolder}/.vscode/markdown-preview.css"
+  ],
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": false
+  }
+}

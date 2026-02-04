@@ -1,0 +1,1193 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Task Manager API",
+		"description": "Collection completa da API do Task Manager App com todos os endpoints documentados.\n\n## Autenticação\nA API usa cookies de sessão (NextAuth). Faça login primeiro no endpoint `/api/auth/signin` e o Postman salvará automaticamente o cookie para uso nas próximas requisições.\n\n## Variáveis\nDefina as seguintes variáveis no ambiente:\n- `baseUrl`: http://localhost:3000 (desenvolvimento) ou https://seu-dominio.com (produção)\n- `taskId`: ID de tarefa para testes\n- `clientId`: ID de cliente para testes\n- `categoryId`: ID de categoria para testes\n- `userId`: ID de usuário para testes\n- `backupId`: ID de backup para testes",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has user object\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('user');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/signin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"signin"
+							]
+						},
+						"description": "Realiza login no sistema e obtém cookie de sessão."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/signout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"signout"
+							]
+						},
+						"description": "Faz logout e invalida a sessão."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📋 Tasks",
+			"item": [
+				{
+					"name": "List Tasks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks?status=pending&limit=50&page=1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending",
+									"description": "pending | in_progress | qa | completed | cancelled"
+								},
+								{
+									"key": "clientId",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "categoryId",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "month",
+									"value": "2026-02",
+									"disabled": true,
+									"description": "YYYY-MM"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Lista todas as tarefas com filtros opcionais."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Task",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.task && jsonData.task._id) {",
+									"    pm.environment.set(\"taskId\", jsonData.task._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"requestDate\": \"2026-02-04\",\n  \"clientId\": \"{{clientId}}\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"title\": \"Nova tarefa via API\",\n  \"description\": \"Descrição detalhada da tarefa\",\n  \"deliveryDate\": \"2026-02-20\",\n  \"cost\": 1500.00,\n  \"observations\": \"Observações opcionais\",\n  \"status\": \"pending\",\n  \"syncAsana\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks"
+							]
+						},
+						"description": "Cria uma nova tarefa no sistema."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Task by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"{{taskId}}"
+							]
+						},
+						"description": "Obtém detalhes de uma tarefa específica."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Task",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Título atualizado\",\n  \"status\": \"in_progress\",\n  \"cost\": 1800.00,\n  \"observations\": \"Tarefa em andamento\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"{{taskId}}"
+							]
+						},
+						"description": "Atualiza uma tarefa existente."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Task",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"{{taskId}}"
+							]
+						},
+						"description": "Remove uma tarefa do sistema."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Task Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/stats?month=2026-02",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "month",
+									"value": "2026-02",
+									"description": "YYYY-MM"
+								},
+								{
+									"key": "startDate",
+									"value": "2026-02-01T00:00:00.000Z",
+									"disabled": true
+								},
+								{
+									"key": "endDate",
+									"value": "2026-02-28T23:59:59.999Z",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retorna estatísticas agregadas de tarefas."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Task Updates",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/updates?since=2026-02-04T00:00:00.000Z",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"updates"
+							],
+							"query": [
+								{
+									"key": "since",
+									"value": "2026-02-04T00:00:00.000Z",
+									"description": "ISO 8601 timestamp"
+								}
+							]
+						},
+						"description": "Retorna atualizações recentes para sincronização."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👥 Clients",
+			"item": [
+				{
+					"name": "List Clients",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/clients?active=true",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"clients"
+							],
+							"query": [
+								{
+									"key": "active",
+									"value": "true"
+								},
+								{
+									"key": "parentId",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "rootOnly",
+									"value": "true",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lista todos os clientes com suporte a hierarquia."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.client && jsonData.client._id) {",
+									"    pm.environment.set(\"clientId\", jsonData.client._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Novo Cliente Teste\",\n  \"parentId\": null,\n  \"phone\": \"+55 11 99999-9999\",\n  \"email\": \"contato@novocliente.com\",\n  \"address\": \"Av. Teste, 456\",\n  \"notes\": \"Cliente criado via API\",\n  \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"clients"
+							]
+						},
+						"description": "Cria um novo cliente."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Obtém detalhes de um cliente específico."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Cliente Atualizado\",\n  \"phone\": \"+55 11 98765-0000\",\n  \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Atualiza um cliente existente."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Client",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Remove um cliente (se não tiver tarefas associadas)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🏷️ Categories",
+			"item": [
+				{
+					"name": "List Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/categories?active=true",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"categories"
+							],
+							"query": [
+								{
+									"key": "active",
+									"value": "true"
+								}
+							]
+						},
+						"description": "Lista todas as categorias."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Category",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.category && jsonData.category._id) {",
+									"    pm.environment.set(\"categoryId\", jsonData.category._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Design Gráfico\",\n  \"description\": \"Projetos de design e criação visual\",\n  \"icon\": \"🎨\",\n  \"color\": \"#EC4899\",\n  \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"categories"
+							]
+						},
+						"description": "Cria uma nova categoria."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Category by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"{{categoryId}}"
+							]
+						},
+						"description": "Obtém detalhes de uma categoria."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Category",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Design & Branding\",\n  \"description\": \"Projetos de design, branding e identidade visual\",\n  \"icon\": \"✨\",\n  \"color\": \"#F59E0B\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"{{categoryId}}"
+							]
+						},
+						"description": "Atualiza uma categoria existente."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Category",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"{{categoryId}}"
+							]
+						},
+						"description": "Remove uma categoria (se não tiver tarefas associadas)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👤 Users",
+			"item": [
+				{
+					"name": "List Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						},
+						"description": "Lista todos os usuários (rootAdmin apenas)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.user && jsonData.user._id) {",
+									"    pm.environment.set(\"userId\", jsonData.user._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"novousuario\",\n  \"password\": \"senha123\",\n  \"name\": \"Novo Usuário Teste\",\n  \"email\": \"novo@example.com\",\n  \"role\": \"user\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						},
+						"description": "Cria um novo usuário (rootAdmin apenas)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "Obtém detalhes de um usuário."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Nome Atualizado\",\n  \"email\": \"novoemail@example.com\",\n  \"role\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "Atualiza um usuário (rootAdmin apenas)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "Remove um usuário (rootAdmin apenas)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💾 Backups",
+			"item": [
+				{
+					"name": "List Backups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/backups",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backups"
+							]
+						},
+						"description": "Lista todos os backups (rootAdmin apenas)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Backup",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.backup && jsonData.backup._id) {",
+									"    pm.environment.set(\"backupId\", jsonData.backup._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/backups",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backups"
+							]
+						},
+						"description": "Cria um backup manual (rootAdmin apenas)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Backup by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/backups/{{backupId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"{{backupId}}"
+							]
+						},
+						"description": "Obtém detalhes de um backup."
+					},
+					"response": []
+				},
+				{
+					"name": "Download Backup",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/backups/{{backupId}}/download",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"{{backupId}}",
+								"download"
+							]
+						},
+						"description": "Baixa o arquivo de backup (JSON)."
+					},
+					"response": []
+				},
+				{
+					"name": "Restore Backup",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/backups/{{backupId}}/restore",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"{{backupId}}",
+								"restore"
+							]
+						},
+						"description": "Restaura um backup (rootAdmin apenas). ⚠️ CUIDADO: Isso substituirá todos os dados!"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Backup",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/backups/{{backupId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"{{backupId}}"
+							]
+						},
+						"description": "Remove um backup."
+					},
+					"response": []
+				},
+				{
+					"name": "Upload & Restore Backup",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "backup",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/backups/upload",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"upload"
+							]
+						},
+						"description": "Faz upload de um arquivo JSON e restaura (rootAdmin apenas)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📊 Audit Logs",
+			"item": [
+				{
+					"name": "List Audit Logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/audit-logs?page=1&limit=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"audit-logs"
+							],
+							"query": [
+								{
+									"key": "action",
+									"value": "UPDATE",
+									"disabled": true,
+									"description": "CREATE | UPDATE | DELETE | READ | LOGIN_SUCCESS | etc"
+								},
+								{
+									"key": "resource",
+									"value": "TASK",
+									"disabled": true,
+									"description": "TASK | USER | CLIENT | CATEGORY | etc"
+								},
+								{
+									"key": "userId",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "startDate",
+									"value": "2026-02-01T00:00:00.000Z",
+									"disabled": true
+								},
+								{
+									"key": "endDate",
+									"value": "2026-02-28T23:59:59.999Z",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						},
+						"description": "Lista logs de auditoria com filtros (rootAdmin apenas)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "⚙️ Settings",
+			"item": [
+				{
+					"name": "Get All Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"settings"
+							]
+						},
+						"description": "Retorna todas as configurações do sistema (rootAdmin apenas)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Settings",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"backup_frequency\": \"weekly\",\n  \"max_login_attempts\": 3,\n  \"maintenance_mode\": false,\n  \"session_timeout_hours\": 24\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"settings"
+							]
+						},
+						"description": "Atualiza configurações do sistema (rootAdmin apenas)."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Maintenance Mode",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/settings/maintenance",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"settings",
+								"maintenance"
+							]
+						},
+						"description": "Verifica se o sistema está em modo manutenção (público)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Asana Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/settings/asana",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"settings",
+								"asana"
+							]
+						},
+						"description": "Retorna configurações do Asana (rootAdmin apenas)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔗 Asana Integration",
+			"item": [
+				{
+					"name": "Webhook Handler (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Hook-Secret",
+								"value": "{{asanaWebhookSecret}}",
+								"description": "Secret do webhook Asana"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"events\": [\n    {\n      \"action\": \"changed\",\n      \"resource\": {\n        \"gid\": \"1234567890\",\n        \"resource_type\": \"task\"\n      },\n      \"parent\": {\n        \"gid\": \"1234567891\",\n        \"resource_type\": \"section\"\n      }\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/asana/webhook",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"asana",
+								"webhook"
+							]
+						},
+						"description": "Recebe webhooks do Asana (público com verificação de secret)."
+					},
+					"response": []
+				},
+				{
+					"name": "Webhook Handshake (GET)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Hook-Secret",
+								"value": "novo-secret-gerado",
+								"description": "Secret gerado pelo Asana"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/asana/webhook",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"asana",
+								"webhook"
+							]
+						},
+						"description": "Handshake de verificação do webhook Asana."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "taskId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "clientId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "categoryId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "backupId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "asanaWebhookSecret",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
