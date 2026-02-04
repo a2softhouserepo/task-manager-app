@@ -1,0 +1,89 @@
+flowchart TB
+    subgraph client["Client Layer"]
+        browser[Web Browser]
+        mobile[Mobile Browser]
+    end
+
+    subgraph frontend["Frontend (Next.js 14)"]
+        pages[Pages<br/>App Router]
+        components[Components<br/>React Server/Client]
+        contexts[Contexts<br/>State Management]
+        hooks[Custom Hooks]
+    end
+
+    subgraph api["API Layer (Next.js Route Handlers)"]
+        auth_api[Auth API<br/>/api/auth]
+        tasks_api[Tasks API<br/>/api/tasks]
+        clients_api[Clients API<br/>/api/clients]
+        backup_api[Backup API<br/>/api/backups]
+        webhook_api[Webhook API<br/>/api/asana/webhook]
+    end
+
+    subgraph business["Business Logic Layer"]
+        auth_lib[Auth Service<br/>NextAuth.js]
+        backup_svc[Backup Service<br/>Streaming]
+        asana_lib[Asana Integration]
+        audit_lib[Audit Logger]
+        crypto_lib[Encryption Service<br/>AES-256-GCM]
+    end
+
+    subgraph data["Data Layer"]
+        mongoose[Mongoose ODM]
+        models[Models<br/>User, Task, Client, etc]
+    end
+
+    subgraph external["External Services"]
+        mongodb[(MongoDB Atlas<br/>Database)]
+        asana[Asana API<br/>Task Management]
+        email[Email Service<br/>SMTP]
+    end
+
+    subgraph security["Security Layer"]
+        rate_limit[Rate Limiting<br/>In-Memory]
+        field_enc[Field Encryption<br/>Plugin]
+        session[Session Management<br/>JWT + Cookies]
+    end
+
+    browser --> pages
+    mobile --> pages
+    pages --> components
+    components --> contexts
+    components --> hooks
+    
+    pages --> auth_api
+    pages --> tasks_api
+    pages --> clients_api
+    pages --> backup_api
+    
+    asana -.webhook.-> webhook_api
+    
+    auth_api --> auth_lib
+    tasks_api --> backup_svc
+    tasks_api --> asana_lib
+    clients_api --> audit_lib
+    backup_api --> backup_svc
+    webhook_api --> asana_lib
+    
+    auth_lib --> rate_limit
+    auth_lib --> session
+    auth_lib --> mongoose
+    
+    backup_svc --> mongoose
+    asana_lib --> mongoose
+    audit_lib --> mongoose
+    
+    mongoose --> models
+    models --> field_enc
+    models --> crypto_lib
+    models --> mongodb
+    
+    asana_lib --> asana
+    auth_lib --> email
+    
+    style client fill:#E3F2FD
+    style frontend fill:#E8F5E9
+    style api fill:#FFF3E0
+    style business fill:#F3E5F5
+    style data fill:#FCE4EC
+    style external fill:#FFF8E1
+    style security fill:#FFEBEE

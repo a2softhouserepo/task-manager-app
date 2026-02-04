@@ -1,0 +1,108 @@
+erDiagram 
+    %% ==========================================
+    %% ENTIDADES (COLLECTIONS)
+    %% ==========================================
+
+    User {
+        ObjectId _id PK
+        String username "Unique"
+        String password "Hashed"
+        String name
+        String email "Encrypted"
+        String emailHash "Index"
+        String role "Enum"
+        Date createdAt
+        Date updatedAt
+    }
+
+    Task {
+        ObjectId _id PK
+        Date requestDate "Index"
+        String clientId FK
+        String clientName
+        String rootClientName
+        String categoryId FK
+        String categoryName
+        String title "Encrypted"
+        String titleHash "Index"
+        String status
+        String userId FK
+        String createdBy FK
+        Date createdAt
+    }
+
+    Client {
+        ObjectId _id PK
+        String name "Encrypted"
+        String nameHash "Index"
+        String parentId FK
+        StringArray path
+        Number depth
+        String rootClientId
+        Boolean active
+        String createdBy FK
+        Date createdAt
+    }
+
+    Category {
+        ObjectId _id PK
+        String name "Index"
+        String description
+        String icon
+        String color
+        Boolean active
+        String createdBy FK
+    }
+
+    AuditLog {
+        ObjectId _id PK
+        String userId FK
+        String userName
+        String action
+        String resource
+        String severity
+        Date createdAt
+    }
+
+    Backup {
+        ObjectId _id PK
+        String filename
+        String type
+        String createdBy FK
+        Number size
+        Date createdAt
+    }
+
+    SystemConfig {
+        ObjectId _id PK
+        String key "Unique"
+        String value
+        String category
+        String updatedBy FK
+    }
+
+    LoginAttempt {
+        ObjectId _id PK
+        String username
+        String ipAddress
+        Boolean success
+        Date createdAt "TTL"
+    }
+
+    %% ==========================================
+    %% RELACIONAMENTOS
+    %% ==========================================
+
+    User ||--o{ Task : "created/assigned"
+    User ||--o{ Client : "created"
+    User ||--o{ Category : "created"
+    User ||--o{ AuditLog : "triggered"
+    User ||--o{ Backup : "created"
+    User ||--o{ SystemConfig : "updated"
+
+    Client ||--o{ Task : "has"
+    Client |o--o{ Client : "parent of"
+
+    Category ||--o{ Task : "classifies"
+
+    User ||..o{ LoginAttempt : "attempts"

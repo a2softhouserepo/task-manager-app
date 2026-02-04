@@ -1,0 +1,69 @@
+flowchart LR
+    subgraph write["Write Flow (Encryption)"]
+        direction TB
+        w_data[Plain Text Data]
+        w_iv[Generate Random IV]
+        w_aes[AES-256-GCM Encrypt]
+        w_cipher[Ciphertext + Tag]
+        w_hmac[HMAC-SHA256]
+        w_blind[Blind Index]
+        w_db[(Save to MongoDB)]
+        
+        w_data --> w_iv
+        w_iv --> w_aes
+        w_aes --> w_cipher
+        w_cipher --> w_db
+        
+        w_data --> w_hmac
+        w_hmac --> w_blind
+        w_blind --> w_db
+    end
+
+    subgraph read["Read Flow (Decryption)"]
+        direction TB
+        r_db[(MongoDB)]
+        r_cipher[Ciphertext + IV + Tag]
+        r_aes[AES-256-GCM Decrypt]
+        r_data[Plain Text Data]
+        
+        r_db --> r_cipher
+        r_cipher --> r_aes
+        r_aes --> r_data
+    end
+
+    subgraph search["Search Flow (Blind Index)"]
+        direction TB
+        s_query[Search Query]
+        s_hmac[HMAC-SHA256]
+        s_blind[Blind Index Hash]
+        s_db[(MongoDB Query)]
+        s_match[Matching Records]
+        s_decrypt[Decrypt Results]
+        s_results[Decrypted Data]
+        
+        s_query --> s_hmac
+        s_hmac --> s_blind
+        s_blind --> s_db
+        s_db --> s_match
+        s_match --> s_decrypt
+        s_decrypt --> s_results
+    end
+
+    subgraph fields["Encrypted Fields by Model"]
+        direction TB
+        
+        user_fields["User<br/>━━━━━<br/>• email (encrypted)<br/>• emailHash (blind)"]
+        
+        task_fields["Task<br/>━━━━━<br/>• title (encrypted)<br/>• titleHash (blind)<br/>• description (encrypted)<br/>• descriptionHash (blind)<br/>• observations (encrypted)"]
+        
+        client_fields["Client<br/>━━━━━<br/>• name (encrypted)<br/>• nameHash (blind)<br/>• phone (encrypted)<br/>• phoneHash (blind)<br/>• address (encrypted)<br/>• email (encrypted)<br/>• emailHash (blind)<br/>• notes (encrypted)"]
+    end
+
+    write -.uses.-> fields
+    read -.uses.-> fields
+    search -.uses.-> fields
+
+    style write fill:#FFEBEE,stroke:#C62828
+    style read fill:#E8F5E9,stroke:#2E7D32
+    style search fill:#FFF8E1,stroke:#F57F17
+    style fields fill:#E3F2FD,stroke:#1565C0

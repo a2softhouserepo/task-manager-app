@@ -1,0 +1,36 @@
+flowchart TB
+    subgraph core["🟢 Core Business"]
+        user["👤 User<br/>Gerencia acesso<br/>e permissões"]
+        task["📋 Task<br/>Entidade principal<br/>do sistema"]
+        client["🏢 Client<br/>Suporta hierarquia<br/>(pai/filho)"]
+        category["🏷️ Category<br/>Classificação<br/>de tarefas"]
+    end
+
+    subgraph audit["🟠 Auditoria & Backup"]
+        auditlog["📜 AuditLog<br/>Registro de todas<br/>ações do sistema"]
+        backup["💾 Backup<br/>Backups automáticos<br/>e manuais"]
+    end
+
+    subgraph config["🔵 Configuração"]
+        sysconfig["⚙️ SystemConfig<br/>Configurações<br/>do sistema"]
+    end
+
+    subgraph security["🔴 Segurança"]
+        loginattempt["🔐 LoginAttempt<br/>Controle de<br/>tentativas de login<br/>(TTL: 1 hora)"]
+    end
+
+    user -->|"1:N cria/gerencia"| task
+    client -->|"1:N associado a"| task
+    category -->|"1:N classifica"| task
+    client -->|"0..1:N pai de"| client
+    user -->|"1:N cria"| client
+    user -->|"1:N cria"| category
+    user -->|"1:N gera"| auditlog
+    user -->|"1:N cria"| backup
+    user -->|"1:N atualiza"| sysconfig
+    user -.->|"tentativas"| loginattempt
+
+    style core fill:#E8F5E9,stroke:#2E7D32
+    style audit fill:#FFF3E0,stroke:#E65100
+    style config fill:#E3F2FD,stroke:#1565C0
+    style security fill:#FCE4EC,stroke:#C62828

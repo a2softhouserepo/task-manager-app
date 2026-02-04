@@ -1,0 +1,30 @@
+classDiagram
+    class User {
+        username (unique)
+        emailHash
+    }
+    class Task {
+        requestDate (desc)
+        clientId_requestDate
+        status_requestDate
+        titleHash
+        descriptionHash
+    }
+    class Client {
+        nameHash
+        parentId
+        path (multikey)
+    }
+    class AuditLog {
+        userId
+        action
+        severity_createdAt
+    }
+    class Backup {
+        type_createdAt
+    }
+    class LoginAttempt {
+        username_createdAt
+        ipAddress_createdAt
+        createdAt (TTL)
+    }

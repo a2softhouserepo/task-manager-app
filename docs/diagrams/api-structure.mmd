@@ -1,0 +1,56 @@
+flowchart TB
+    subgraph api_routes["API Routes Structure"]
+        direction TB
+        
+        auth_routes["/api/auth/[...nextauth]<br/>━━━━━━━━━━━━━━━<br/>POST /signin<br/>POST /signout<br/>GET /session"]
+        
+        tasks_routes["/api/tasks<br/>━━━━━━━━━━━━━━━<br/>GET / (list + filters)<br/>POST / (create)<br/>GET /[id] (detail)<br/>PUT /[id] (update)<br/>DELETE /[id] (delete)<br/>GET /stats (dashboard)<br/>GET /updates (polling)"]
+        
+        clients_routes["/api/clients<br/>━━━━━━━━━━━━━━━<br/>GET / (list + hierarchy)<br/>POST / (create)<br/>GET /[id]<br/>PUT /[id]<br/>DELETE /[id]"]
+        
+        categories_routes["/api/categories<br/>━━━━━━━━━━━━━━━<br/>GET /<br/>POST /<br/>GET /[id]<br/>PUT /[id]<br/>DELETE /[id]"]
+        
+        users_routes["/api/users<br/>━━━━━━━━━━━━━━━<br/>GET / (admin only)<br/>POST / (create)<br/>GET /[id]<br/>PUT /[id]<br/>DELETE /[id]"]
+        
+        backup_routes["/api/backups<br/>━━━━━━━━━━━━━━━<br/>GET / (list)<br/>POST / (manual)<br/>GET /[id]/download<br/>POST /[id]/restore<br/>POST /upload<br/>POST /auto (cron)"]
+        
+        settings_routes["/api/settings<br/>━━━━━━━━━━━━━━━<br/>GET / (system config)<br/>PUT / (update)<br/>POST /asana (enable)<br/>POST /maintenance (toggle)"]
+        
+        audit_routes["/api/audit-logs<br/>━━━━━━━━━━━━━━━<br/>GET / (admin only)"]
+        
+        webhook_routes["/api/asana/webhook<br/>━━━━━━━━━━━━━━━<br/>POST / (Asana events)"]
+    end
+
+    subgraph middleware["API Middleware Chain"]
+        direction TB
+        
+        cors[CORS Headers<br/>Origin validation]
+        auth_check[Authentication<br/>Session verification]
+        role_check[Authorization<br/>Role-based access]
+        rate_limit[Rate Limiting<br/>Per endpoint]
+        validation[Request Validation<br/>Zod schemas]
+        error_handler[Error Handler<br/>Standardized responses]
+    end
+
+    subgraph response["Response Format"]
+        direction TB
+        
+        success["Success Response<br/>━━━━━━━━━━━━━━━<br/>{<br/>  data: {...},<br/>  message: 'Success'<br/>}"]
+        
+        error["Error Response<br/>━━━━━━━━━━━━━━━<br/>{<br/>  error: 'Message',<br/>  details: {...}<br/>}"]
+        
+        paginated["Paginated Response<br/>━━━━━━━━━━━━━━━<br/>{<br/>  data: [...],<br/>  pagination: {<br/>    page, limit, total<br/>  }<br/>}"]
+    end
+
+    api_routes --> middleware
+    middleware --> response
+    
+    cors --> auth_check
+    auth_check --> role_check
+    role_check --> rate_limit
+    rate_limit --> validation
+    validation --> error_handler
+
+    style api_routes fill:#E3F2FD
+    style middleware fill:#FFF3E0
+    style response fill:#E8F5E9

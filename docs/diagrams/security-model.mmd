@@ -1,0 +1,43 @@
+flowchart TB
+    subgraph legend["📋 Legenda"]
+        enc["🔐 Criptografado (AES-256)"]
+        hash["🔒 Hash (bcrypt)"]
+        blind["🔍 Blind Index (HMAC)"]
+    end
+
+    subgraph user["User"]
+        direction TB
+        u_pwd["password (Hash)"]
+        u_email["email (Enc)"]
+        u_ehash["emailHash (Blind)"]
+    end
+
+    subgraph task["Task"]
+        direction TB
+        t_title["title (Enc)"]
+        t_thash["titleHash (Blind)"]
+        t_desc["description (Enc)"]
+    end
+
+    subgraph client["Client"]
+        direction TB
+        c_name["name (Enc)"]
+        c_nhash["nameHash (Blind)"]
+        c_phone["phone (Enc)"]
+    end
+
+    style enc fill:#FFEBEE,stroke:#C62828
+    style hash fill:#E3F2FD,stroke:#1565C0
+    style blind fill:#FFF8E1,stroke:#F57F17
+    
+    style u_pwd fill:#E3F2FD
+    style u_email fill:#FFEBEE
+    style u_ehash fill:#FFF8E1
+    
+    style t_title fill:#FFEBEE
+    style t_thash fill:#FFF8E1
+    style t_desc fill:#FFEBEE
+    
+    style c_name fill:#FFEBEE
+    style c_nhash fill:#FFF8E1
+    style c_phone fill:#FFEBEE

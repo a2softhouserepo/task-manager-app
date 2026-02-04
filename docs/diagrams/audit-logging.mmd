@@ -1,0 +1,68 @@
+sequenceDiagram
+    participant Action
+    participant API
+    participant AuditLib
+    participant Database
+    participant User
+
+    Note over Action,User: Audit Log Creation Flow
+
+    Action->>API: Perform operation (CREATE/UPDATE/DELETE)
+    API->>API: Execute business logic
+    
+    API->>AuditLib: logAudit(details)
+    Note right of AuditLib: Required fields:<br/>- action<br/>- resource<br/>- userId<br/>- userName<br/>- userEmail
+    
+    AuditLib->>AuditLib: Determine severity
+    Note right of AuditLib: INFO: READ, CREATE<br/>WARN: UPDATE, DELETE<br/>CRITICAL: BACKUP_RESTORE,<br/>SYSTEM changes
+    
+    AuditLib->>AuditLib: Add metadata
+    Note right of AuditLib: - ipAddress<br/>- userAgent<br/>- timestamp<br/>- status (SUCCESS/FAILURE)
+    
+    AuditLib->>Database: Create AuditLog document
+    Database-->>AuditLib: Log saved
+    AuditLib-->>API: Audit complete
+    
+    API-->>Action: Operation result
+
+    Note over Action,User: Audit Log Query & Filtering
+
+    User->>API: GET /api/audit-logs?filters
+    Note right of User: Filters:<br/>- action<br/>- resource<br/>- userId<br/>- severity<br/>- dateRange
+    
+    API->>API: Check user role
+    
+    alt Not admin/rootAdmin
+        API-->>User: 403 Forbidden
+    else Admin or rootAdmin
+        API->>Database: Query AuditLog (indexed)
+        Note right of Database: Indexes:<br/>- userId<br/>- action<br/>- resource<br/>- severity_createdAt<br/>- createdAt (desc)
+        
+        Database-->>API: Filtered logs (paginated)
+        API-->>User: JSON logs + pagination
+    end
+
+    Note over Action,User: Automatic Cleanup (Archive)
+
+    loop Daily Cron Job
+        API->>Database: Find logs older than 90 days
+        Database-->>API: Old logs count
+        
+        opt Has old logs
+            API->>Database: Archive to separate collection
+            API->>Database: Delete from main AuditLog
+            Note right of Database: Keeps DB performant<br/>Archives for compliance
+        end
+    end
+
+    Note over Action,User: Critical Event Alerts
+
+    Action->>API: CRITICAL operation
+    API->>AuditLib: logAudit(severity=CRITICAL)
+    
+    AuditLib->>Database: Save log
+    
+    opt Email notifications enabled
+        AuditLib->>AuditLib: Send alert email to admins
+        Note right of AuditLib: Events that trigger:<br/>- BACKUP_RESTORE<br/>- AUTH_FAILURE (multiple)<br/>- System config changes
+    end

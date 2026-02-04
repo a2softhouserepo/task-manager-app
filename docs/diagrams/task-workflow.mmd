@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> pending : Criação
+    
+    pending : 🕐 Pending
+    in_progress : 🔄 In Progress
+    qa : 🔍 QA
+    completed : ✅ Completed
+    cancelled : ❌ Cancelled
+
+    pending --> in_progress : Iniciar
+    pending --> cancelled : Cancelar
+    in_progress --> qa : Enviar p/ Revisão
+    in_progress --> pending : Pausar
+    in_progress --> cancelled : Cancelar
+    qa --> completed : Aprovar
+    qa --> in_progress : Rejeitar
+    qa --> cancelled : Cancelar
+    completed --> [*]
+    cancelled --> [*]

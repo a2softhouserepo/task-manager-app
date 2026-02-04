@@ -1,0 +1,84 @@
+flowchart TB
+    subgraph dev["Development Environment"]
+        dev_code[Source Code<br/>Git Repository]
+        dev_env[Local .env.local<br/>Development vars]
+        dev_server[Next.js Dev Server<br/>npm run dev]
+    end
+
+    subgraph build["Build Process"]
+        build_next[Next.js Build<br/>npm run build]
+        build_opt[Optimization<br/>- Tree shaking<br/>- Code splitting<br/>- Minification]
+        build_out[.next/ output<br/>Static + Server bundles]
+    end
+
+    subgraph prod["Production Environment"]
+        direction TB
+        
+        prod_env[Environment Variables<br/>MONGODB_URI<br/>NEXTAUTH_SECRET<br/>ASANA_ACCESS_TOKEN<br/>ENCRYPTION_KEY]
+        
+        prod_server[Next.js Production Server<br/>npm start<br/>Port 3000]
+        
+        subgraph vercel["Vercel Platform (Optional)"]
+            vercel_deploy[Automatic Deployment<br/>Git push → Deploy]
+            vercel_edge[Edge Functions<br/>Global CDN]
+        end
+        
+        subgraph vps["VPS/Cloud (Alternative)"]
+            docker[Docker Container<br/>Node.js runtime]
+            nginx[Nginx Reverse Proxy<br/>SSL/TLS termination]
+            pm2[PM2 Process Manager<br/>Auto-restart]
+        end
+    end
+
+    subgraph database["Database Layer"]
+        mongo_atlas[MongoDB Atlas<br/>Cloud Database]
+        mongo_backup[Automated Backups<br/>Point-in-time recovery]
+        mongo_replica[Replica Set<br/>High availability]
+    end
+
+    subgraph external["External Services"]
+        asana_svc[Asana API<br/>app.asana.com]
+        email_smtp[SMTP Email Server]
+    end
+
+    subgraph monitoring["Monitoring & Logs"]
+        logs[Application Logs<br/>Console/File]
+        audit_db[Audit Logs<br/>MongoDB Collection]
+        alerts[Alert System<br/>Email notifications]
+    end
+
+    dev_code --> build_next
+    dev_env --> dev_server
+    
+    build_next --> build_opt
+    build_opt --> build_out
+    
+    build_out --> prod_server
+    prod_env --> prod_server
+    
+    build_out -.alternative.-> vercel_deploy
+    build_out -.alternative.-> docker
+    
+    docker --> pm2
+    pm2 --> nginx
+    
+    prod_server --> mongo_atlas
+    vercel_edge --> mongo_atlas
+    docker --> mongo_atlas
+    
+    mongo_atlas --> mongo_backup
+    mongo_atlas --> mongo_replica
+    
+    prod_server --> asana_svc
+    prod_server --> email_smtp
+    
+    prod_server --> logs
+    prod_server --> audit_db
+    audit_db --> alerts
+
+    style dev fill:#E3F2FD
+    style build fill:#FFF3E0
+    style prod fill:#E8F5E9
+    style database fill:#FCE4EC
+    style external fill:#F3E5F5
+    style monitoring fill:#FFF8E1

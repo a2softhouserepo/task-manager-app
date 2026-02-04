@@ -1,0 +1,90 @@
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant AuthAPI
+    participant RateLimit
+    participant Database
+    participant AuditLog
+
+    Note over User,AuditLog: Login Flow with Security Checks
+
+    User->>Frontend: Enter credentials
+    Frontend->>AuthAPI: POST /api/auth/signin
+    
+    AuthAPI->>RateLimit: Check rate limit (username + IP)
+    
+    alt Rate limit exceeded
+        RateLimit-->>AuthAPI: Blocked
+        AuthAPI-->>Frontend: 429 Too Many Requests
+        Frontend-->>User: Wait X minutes
+    else Rate limit OK
+        RateLimit-->>AuthAPI: Allowed
+        
+        AuthAPI->>Database: Check LoginAttempt (last 15min)
+        Database-->>AuthAPI: Attempt count
+        
+        alt Max attempts exceeded (5 failed)
+            AuthAPI->>Database: Record failed attempt
+            AuthAPI->>AuditLog: Log AUTH_FAILURE
+            AuthAPI-->>Frontend: 401 Blocked
+            Frontend-->>User: Account temporarily locked
+        else Attempts OK
+            AuthAPI->>Database: Find User by username
+            
+            alt User not found
+                AuthAPI->>Database: Record failed attempt
+                AuthAPI->>AuditLog: Log LOGIN_FAILED
+                AuthAPI-->>Frontend: 401 Invalid credentials
+                Frontend-->>User: Error message
+            else User found
+                AuthAPI->>AuthAPI: Verify password (bcrypt)
+                
+                alt Password incorrect
+                    AuthAPI->>Database: Record failed attempt
+                    AuthAPI->>AuditLog: Log LOGIN_FAILED
+                    AuthAPI-->>Frontend: 401 Invalid credentials
+                else Password correct
+                    AuthAPI->>Database: Clear failed attempts
+                    AuthAPI->>Database: Create session
+                    AuthAPI->>AuditLog: Log LOGIN_SUCCESS
+                    AuthAPI-->>Frontend: 200 OK + Session Token
+                    Frontend->>Frontend: Store session (cookie)
+                    Frontend-->>User: Redirect to Dashboard
+                end
+            end
+        end
+    end
+
+    Note over User,AuditLog: Protected Route Access
+
+    User->>Frontend: Access protected page
+    Frontend->>AuthAPI: GET /api/auth/session
+    
+    alt No session or expired
+        AuthAPI-->>Frontend: 401 Unauthorized
+        Frontend-->>User: Redirect to Login
+    else Valid session
+        AuthAPI->>Database: Verify session token
+        Database-->>AuthAPI: User data + role
+        AuthAPI-->>Frontend: User object
+        Frontend->>Frontend: Check role permissions
+        
+        alt Insufficient permissions
+            Frontend-->>User: 403 Access Denied
+        else Has permissions
+            Frontend-->>User: Show page content
+        end
+    end
+
+    Note over User,AuditLog: Session Timeout (15min inactivity)
+
+    loop Every request
+        Frontend->>AuthAPI: API call with session
+        AuthAPI->>AuthAPI: Update lastActivity
+    end
+    
+    alt 15 min no activity
+        AuthAPI->>Database: Invalidate session
+        AuthAPI-->>Frontend: 401 Session expired
+        Frontend-->>User: Auto logout + notification
+    end

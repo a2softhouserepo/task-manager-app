@@ -1,0 +1,130 @@
+erDiagram
+    User {
+        ObjectId _id PK
+        String username UK "unique"
+        String password "hashed"
+        String name
+        String email "encrypted"
+        String emailHash "index"
+        Enum role "user | admin | rootAdmin"
+        Date createdAt
+        Date updatedAt
+    }
+    Task {
+        ObjectId _id PK
+        Date requestDate "index"
+        String clientId FK
+        String clientName
+        String rootClientName
+        StringArray subClientLevels
+        String categoryId FK
+        String categoryName
+        String categoryIcon
+        String categoryColor
+        String title "encrypted"
+        String titleHash "index"
+        String description "encrypted"
+        String descriptionHash "index"
+        Date deliveryDate "index"
+        Number cost
+        String observations "encrypted"
+        Enum status "pending | in_progress | qa | completed | cancelled"
+        String asanaTaskGid "index"
+        Boolean asanaSynced
+        String asanaSyncError
+        String userId FK
+        String createdBy FK
+        Date createdAt
+        Date updatedAt
+    }
+    Client {
+        ObjectId _id PK
+        String name "encrypted"
+        String nameHash "index"
+        String parentId FK "index, self-reference"
+        StringArray path "index"
+        Number depth "index"
+        String rootClientId "index"
+        Number childrenCount
+        String phone "encrypted"
+        String phoneHash "index"
+        String address "encrypted"
+        String email "encrypted"
+        String emailHash "index"
+        String notes "encrypted"
+        Boolean active
+        String createdBy FK
+        Date createdAt
+        Date updatedAt
+    }
+    Category {
+        ObjectId _id PK
+        String name "index"
+        String description
+        String icon
+        String color
+        Boolean active "index"
+        String createdBy FK
+        Date createdAt
+        Date updatedAt
+    }
+    AuditLog {
+        ObjectId _id PK
+        String userId FK "index"
+        String userName
+        String userEmail "index"
+        Enum action "index"
+        Enum resource "index"
+        String resourceId "index"
+        Mixed details
+        String ipAddress
+        String userAgent
+        Enum severity
+        Enum status
+        Date createdAt
+    }
+    Backup {
+        ObjectId _id PK
+        String filename "index"
+        String data "JSON"
+        Number size
+        Enum type "index - AUTO | MANUAL"
+        String createdBy FK
+        Number stats_tasks
+        Number stats_clients
+        Number stats_categories
+        Number stats_users
+        Date createdAt "index"
+    }
+    SystemConfig {
+        ObjectId _id PK
+        String key UK "unique, index"
+        Mixed value
+        Enum type
+        Enum category "index"
+        String label
+        String description
+        StringArray options
+        String updatedBy FK
+        Date createdAt
+        Date updatedAt
+    }
+    LoginAttempt {
+        ObjectId _id PK
+        String username "index"
+        String ipAddress "index"
+        Boolean success
+        String userAgent
+        Date createdAt "TTL 1h"
+    }
+    User ||--o{ Task : "creates/manages"
+    User ||--o{ Task : "createdBy"
+    Client ||--o{ Task : "clientId"
+    Category ||--o{ Task : "categoryId"
+    Client ||--o| Client : "parentId (hierarchy)"
+    User ||--o{ Client : "createdBy"
+    User ||--o{ Category : "createdBy"
+    User ||--o{ AuditLog : "userId"
+    User ||--o{ Backup : "createdBy"
+    User ||--o{ SystemConfig : "updatedBy"
+    User ||..o{ LoginAttempt : "username reference"

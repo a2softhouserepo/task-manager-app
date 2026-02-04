@@ -1,0 +1,112 @@
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant TaskAPI
+    participant Database
+    participant AsanaAPI
+    participant AsanaWebhook
+
+    Note over User,AsanaWebhook: Task Creation & Sync to Asana
+
+    User->>Frontend: Create Task (sendToAsana=true)
+    Frontend->>TaskAPI: POST /api/tasks
+    
+    TaskAPI->>Database: Create Task (status=pending)
+    Database-->>TaskAPI: Task created
+    
+    TaskAPI->>TaskAPI: Check SystemConfig (asana_enabled)
+    
+    alt Asana integration disabled
+        TaskAPI-->>Frontend: 201 Created (no sync)
+    else Asana enabled
+        TaskAPI->>AsanaAPI: POST /tasks
+        Note right of AsanaAPI: Creates task in<br/>configured project<br/>Maps fields:<br/>- title → name<br/>- description → notes<br/>- deliveryDate → due_on
+        
+        alt Asana API error
+            AsanaAPI-->>TaskAPI: Error response
+            TaskAPI->>Database: Update Task (syncError, synced=false)
+            TaskAPI-->>Frontend: 201 Created (sync failed)
+        else Success
+            AsanaAPI-->>TaskAPI: Task GID
+            TaskAPI->>Database: Update Task (asanaTaskGid, synced=true)
+            
+            opt Has file attachments
+                TaskAPI->>AsanaAPI: POST /attachments
+                AsanaAPI-->>TaskAPI: Attachment uploaded
+            end
+            
+            opt Has section mapping
+                TaskAPI->>AsanaAPI: POST /sections/{gid}/addTask
+                Note right of AsanaAPI: Moves task to section<br/>based on status<br/>(pending → Backlog)
+            end
+            
+            TaskAPI-->>Frontend: 201 Created (synced)
+        end
+    end
+
+    Note over User,AsanaWebhook: Task Update (Local → Asana)
+
+    User->>Frontend: Update Task status (in_progress)
+    Frontend->>TaskAPI: PUT /api/tasks/[id]
+    
+    TaskAPI->>Database: Update Task
+    Database-->>TaskAPI: Updated
+    
+    alt Task has asanaTaskGid
+        TaskAPI->>AsanaAPI: PUT /tasks/{gid}
+        Note right of AsanaAPI: Updates:<br/>- name<br/>- notes<br/>- due_on<br/>- completed status
+        
+        AsanaAPI-->>TaskAPI: Updated
+        
+        opt Status changed
+            TaskAPI->>TaskAPI: Get section GID for new status
+            TaskAPI->>AsanaAPI: POST /sections/{gid}/addTask
+            Note right of AsanaAPI: Moves task to new column<br/>(in_progress → Doing)
+        end
+    end
+    
+    TaskAPI-->>Frontend: 200 OK
+
+    Note over User,AsanaWebhook: Webhook Event (Asana → Local)
+
+    AsanaWebhook->>TaskAPI: POST /api/asana/webhook
+    Note left of AsanaWebhook: Event types:<br/>- task.changed<br/>- task.completed<br/>- task.deleted
+    
+    TaskAPI->>TaskAPI: Verify X-Hook-Signature (HMAC)
+    
+    alt Invalid signature
+        TaskAPI-->>AsanaWebhook: 401 Unauthorized
+    else Valid signature
+        TaskAPI->>Database: Find Task by asanaTaskGid
+        
+        alt Task not found
+            TaskAPI-->>AsanaWebhook: 200 OK (ignore)
+        else Task found
+            TaskAPI->>AsanaAPI: GET /tasks/{gid}
+            Note right of AsanaAPI: Fetch latest data to<br/>ensure consistency
+            AsanaAPI-->>TaskAPI: Task details
+            
+            TaskAPI->>TaskAPI: Compare local vs Asana
+            Note right of TaskAPI: Checks differences in:<br/>- name (title)<br/>- notes (description)<br/>- due_on (deliveryDate)<br/>- completed (status)
+            
+            opt Has changes
+                TaskAPI->>Database: Update Task (prevent loop flag)
+                Note right of Database: Sets _fromWebhook=true<br/>to prevent re-syncing
+                TaskAPI->>Database: Audit log (source: webhook)
+            end
+            
+            TaskAPI-->>AsanaWebhook: 200 OK (processed)
+        end
+    end
+
+    Note over User,AsanaWebhook: Initial Webhook Setup
+
+    User->>Frontend: Configure Asana in Settings
+    Frontend->>TaskAPI: POST /api/settings/asana (enable)
+    
+    TaskAPI->>AsanaAPI: POST /webhooks
+    Note right of AsanaAPI: Registers webhook for:<br/>- Project GID<br/>- Callback URL<br/>- Resource events
+    AsanaAPI-->>TaskAPI: Webhook ID + Secret
+    
+    TaskAPI->>Database: Save to SystemConfig
+    TaskAPI-->>Frontend: 200 OK (webhook active)

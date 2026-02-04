@@ -1,0 +1,57 @@
+flowchart TB
+    subgraph roles["User Roles & Hierarchy"]
+        root[👑 rootAdmin<br/>System Administrator]
+        admin[⚙️ admin<br/>Manager]
+        user[👤 user<br/>Regular User]
+    end
+
+    subgraph permissions["Role Permissions Matrix"]
+        direction TB
+        
+        perm_users["👥 User Management"]
+        perm_config["⚙️ System Config"]
+        perm_backup["💾 Backups"]
+        perm_audit["📜 Audit Logs"]
+        perm_clients["🏢 Clients (All)"]
+        perm_tasks["📋 Tasks (All)"]
+        perm_categories["🏷️ Categories"]
+        perm_own["📝 Own Tasks/Data"]
+    end
+
+    subgraph features["Feature Access"]
+        create_user[Create Users]
+        delete_user[Delete Users]
+        view_all[View All Data]
+        export[Export Data]
+        restore[Restore Backups]
+        maintenance[Maintenance Mode]
+        settings[System Settings]
+    end
+
+    root --> perm_users
+    root --> perm_config
+    root --> perm_backup
+    root --> perm_audit
+    root --> perm_clients
+    root --> perm_tasks
+    root --> perm_categories
+    
+    admin --> perm_backup
+    admin --> perm_audit
+    admin --> perm_clients
+    admin --> perm_tasks
+    admin --> perm_categories
+    
+    user --> perm_own
+    
+    perm_users --> create_user
+    perm_users --> delete_user
+    perm_config --> settings
+    perm_config --> maintenance
+    perm_backup --> restore
+    perm_backup --> export
+    perm_audit --> view_all
+    
+    style root fill:#FFE0B2,stroke:#E65100
+    style admin fill:#C5E1A5,stroke:#558B2F
+    style user fill:#B3E5FC,stroke:#0277BD

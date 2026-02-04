@@ -1,0 +1,96 @@
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant API
+    participant Database
+    participant AsanaAPI
+
+    Note over User,AsanaAPI: SCENARIO 1: Dashboard Loading
+
+    User->>Frontend: Access Dashboard
+    Frontend->>API: GET /api/clients?active=true
+    API->>Database: Query Active Clients
+    Database-->>API: Client List
+    API-->>Frontend: JSON Clients
+
+    Frontend->>API: GET /api/categories?active=true
+    API->>Database: Query Active Categories
+    Database-->>API: Category List
+    API-->>Frontend: JSON Categories
+
+    Frontend->>API: GET /api/tasks/stats
+    API->>Database: Aggregation Pipeline
+    Note right of Database: Calculates monthly stats,<br/>top clients, status counts
+    Database-->>API: Aggregated Stats
+    API-->>Frontend: JSON Stats
+
+    Frontend->>Frontend: Render Dashboard
+    Frontend-->>User: Display UI
+
+    Note over User,AsanaAPI: SCENARIO 2: Task Creation with Asana Sync
+
+    User->>Frontend: Click New Task
+    User->>Frontend: Fill Form & Submit
+    Frontend->>API: POST /api/tasks
+    
+    API->>API: Validate Data
+    API->>Database: Create Task
+    Database-->>API: Task Created
+    
+    alt Asana Enabled & Send to Asana
+        API->>AsanaAPI: POST /tasks
+        AsanaAPI-->>API: Task GID
+        API->>Database: Update Task with GID
+        Database-->>API: Updated
+        
+        opt Has Attachments
+            API->>AsanaAPI: Upload Files
+            AsanaAPI-->>API: Success
+        end
+    end
+    
+    API->>Database: Create Audit Log
+    Database-->>API: Log Saved
+    API-->>Frontend: 201 Created
+    Frontend->>Frontend: Refresh Task List
+    Frontend-->>User: Show Success
+
+    Note over User,AsanaAPI: SCENARIO 3: Asana Webhook Processing
+
+    AsanaAPI->>API: POST /api/asana/webhook
+    API->>API: Verify Signature
+    
+    alt Invalid Signature
+        API-->>AsanaAPI: 401 Unauthorized
+    else Valid Signature
+        API->>Database: Find Task by GID
+        Database-->>API: Task Found
+        
+        opt Task Exists
+            API->>AsanaAPI: GET /tasks/{gid}
+            AsanaAPI-->>API: Latest Task Data
+            API->>API: Compare Changes
+            
+            opt Has Changes
+                API->>Database: Update Task
+                Database-->>API: Updated
+                API->>Database: Audit Log
+                Database-->>API: Logged
+            end
+        end
+        
+        API-->>AsanaAPI: 200 OK
+    end
+
+    Note over User,AsanaAPI: SCENARIO 4: Real-time Polling
+
+    loop Every 30 seconds
+        Frontend->>API: GET /api/tasks/updates?since=timestamp
+        API->>Database: Get Latest Timestamp
+        Database-->>API: Timestamp
+        API-->>Frontend: hasUpdates: boolean
+        
+        opt Has Updates
+            Frontend->>Frontend: Reload Data
+        end
+    end

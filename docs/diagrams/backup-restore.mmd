@@ -1,0 +1,104 @@
+sequenceDiagram
+    participant Cron
+    participant User
+    participant Frontend
+    participant BackupAPI
+    participant Database
+    participant FileSystem
+    participant AuditLog
+
+    Note over Cron,AuditLog: Automatic Daily Backup (3 AM)
+
+    Cron->>BackupAPI: Trigger /api/cron/backup
+    BackupAPI->>Database: Check last AUTO backup (today)
+    
+    alt Already created today
+        BackupAPI-->>Cron: Skip (200 OK)
+    else No backup today
+        BackupAPI->>Database: Stream Tasks (cursor batches)
+        Database-->>BackupAPI: Tasks data
+        BackupAPI->>Database: Stream Clients (batches)
+        Database-->>BackupAPI: Clients data
+        BackupAPI->>Database: Stream Categories (batches)
+        Database-->>BackupAPI: Categories data
+        
+        BackupAPI->>BackupAPI: Build JSON (compress)
+        Note right of BackupAPI: Uses streaming to avoid<br/>memory overflow<br/>Batch size: 500 docs
+        
+        BackupAPI->>Database: Save Backup document
+        Database-->>BackupAPI: Backup ID
+        
+        BackupAPI->>AuditLog: Log CREATE backup
+        BackupAPI->>BackupAPI: Check old backups (>30 days)
+        
+        opt Cleanup old backups
+            BackupAPI->>Database: Delete backups older than 30 days
+        end
+        
+        BackupAPI-->>Cron: 200 OK
+    end
+
+    Note over Cron,AuditLog: Manual Backup Creation
+
+    User->>Frontend: Click "Create Backup"
+    Frontend->>BackupAPI: POST /api/backups (type=MANUAL)
+    
+    BackupAPI->>Database: Stream all collections
+    Database-->>BackupAPI: All data (batches)
+    BackupAPI->>BackupAPI: Build JSON + stats
+    BackupAPI->>Database: Save Backup (type=MANUAL)
+    Database-->>BackupAPI: Backup created
+    
+    BackupAPI->>AuditLog: Log BACKUP_DOWNLOAD
+    BackupAPI-->>Frontend: 201 Created + Backup ID
+    Frontend-->>User: Success notification
+
+    Note over Cron,AuditLog: Backup Download
+
+    User->>Frontend: Click "Download Backup"
+    Frontend->>BackupAPI: GET /api/backups/[id]/download
+    BackupAPI->>Database: Find Backup by ID
+    Database-->>BackupAPI: Backup data (JSON string)
+    
+    BackupAPI->>AuditLog: Log BACKUP_DOWNLOAD
+    BackupAPI-->>Frontend: File stream (application/json)
+    Frontend-->>User: Browser downloads file
+
+    Note over Cron,AuditLog: Backup Restore
+
+    User->>Frontend: Upload backup file
+    Frontend->>BackupAPI: POST /api/backups/upload
+    BackupAPI->>BackupAPI: Parse & validate JSON
+    
+    alt Invalid format
+        BackupAPI-->>Frontend: 400 Bad Request
+    else Valid backup
+        BackupAPI->>Database: Save to Backup collection
+        BackupAPI-->>Frontend: 201 Created + Backup ID
+        
+        User->>Frontend: Click "Restore"
+        Frontend->>Frontend: Show confirmation modal
+        User->>Frontend: Confirm restore
+        
+        Frontend->>BackupAPI: POST /api/backups/[id]/restore
+        
+        BackupAPI->>Database: Start transaction
+        BackupAPI->>Database: Delete all Tasks
+        BackupAPI->>Database: Delete all Clients
+        BackupAPI->>Database: Delete all Categories
+        
+        BackupAPI->>Database: Bulk insert Tasks (batches)
+        BackupAPI->>Database: Bulk insert Clients (batches)
+        BackupAPI->>Database: Bulk insert Categories (batches)
+        
+        BackupAPI->>Database: Commit transaction
+        
+        alt Transaction failed
+            BackupAPI->>Database: Rollback
+            BackupAPI-->>Frontend: 500 Restore failed
+        else Success
+            BackupAPI->>AuditLog: Log BACKUP_RESTORE (CRITICAL)
+            BackupAPI-->>Frontend: 200 OK + Stats
+            Frontend-->>User: Success + Reload app
+        end
+    end

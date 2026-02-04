@@ -1,0 +1,16 @@
+flowchart TB
+    subgraph hierarchy["Exemplo de Hierarquia (Materialized Path)"]
+        empresa["🏢 Empresa ABC<br/>_id: abc123<br/>parentId: null<br/>path: []"]
+        filialsp["🏬 Filial São Paulo<br/>_id: sp456<br/>parentId: abc123<br/>path: [abc123]"]
+        filialrj["🏬 Filial Rio<br/>_id: rj789<br/>parentId: abc123<br/>path: [abc123]"]
+        marketing["📊 Setor Marketing SP<br/>_id: mkt001<br/>parentId: sp456<br/>path: [abc123, sp456]"]
+    end
+
+    empresa --> filialsp
+    empresa --> filialrj
+    filialsp --> marketing
+
+    style empresa fill:#E8F5E9,stroke:#2E7D32
+    style filialsp fill:#E3F2FD,stroke:#1565C0
+    style filialrj fill:#E3F2FD,stroke:#1565C0
+    style marketing fill:#FFF8E1,stroke:#F57F17
