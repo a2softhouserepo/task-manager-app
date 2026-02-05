@@ -300,6 +300,26 @@ export default function DashboardPage() {
     setShowViewModal(true);
   };
 
+  // Sync editingTask with tasks list when it's updated (e.g., via Asana webhook)
+  useEffect(() => {
+    if (editingTask && showTaskModal) {
+      const updatedTask = tasks.find(t => t._id === editingTask._id);
+      if (updatedTask) {
+        const hasChanged = 
+          updatedTask.title !== editingTask.title ||
+          updatedTask.description !== editingTask.description ||
+          updatedTask.status !== editingTask.status ||
+          updatedTask.deliveryDate !== editingTask.deliveryDate ||
+          updatedTask.cost !== editingTask.cost;
+        
+        if (hasChanged) {
+          console.log('[DASHBOARD] Editing task updated externally, refreshing form');
+          setEditingTask(updatedTask);
+        }
+      }
+    }
+  }, [tasks, editingTask, showTaskModal]);
+
   // Sync viewingTask with tasks list when it's updated (e.g., via Asana webhook)
   useEffect(() => {
     if (viewingTask && showViewModal) {

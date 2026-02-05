@@ -67,6 +67,7 @@ interface TaskModalProps {
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pendente' },
   { value: 'in_progress', label: 'Em Andamento' },
+  { value: 'qa', label: 'Em QA' },
   { value: 'completed', label: 'Concluída' },
   { value: 'cancelled', label: 'Cancelada' },
 ];
