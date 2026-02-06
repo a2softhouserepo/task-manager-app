@@ -202,34 +202,52 @@ export default function TasksPage() {
    */
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
-      let aValue: string | number, bValue: string | number;
+      let comparison = 0;
 
       switch (sortColumn) {
         case 'requestDate':
-          aValue = new Date(a.requestDate).getTime();
-          bValue = new Date(b.requestDate).getTime();
+          // Para requestDate, usar _id como ordenação primária pois reflete a ordem real de criação
+          // já que requestDate vem do formulário sem hora/minuto (apenas data)
+          comparison = sortDirection === 'desc' 
+            ? (b._id > a._id ? 1 : b._id < a._id ? -1 : 0)
+            : (a._id > b._id ? 1 : a._id < b._id ? -1 : 0);
           break;
         case 'clientName':
-          aValue = a.clientName.toLowerCase();
-          bValue = b.clientName.toLowerCase();
+          const aClient = a.clientName.toLowerCase();
+          const bClient = b.clientName.toLowerCase();
+          if (aClient === bClient) {
+            // Desempate por _id
+            comparison = a._id > b._id ? 1 : a._id < b._id ? -1 : 0;
+          } else {
+            comparison = aClient > bClient ? 1 : -1;
+          }
+          comparison = sortDirection === 'asc' ? comparison : -comparison;
           break;
         case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
+          const aTitle = a.title.toLowerCase();
+          const bTitle = b.title.toLowerCase();
+          if (aTitle === bTitle) {
+            // Desempate por _id
+            comparison = a._id > b._id ? 1 : a._id < b._id ? -1 : 0;
+          } else {
+            comparison = aTitle > bTitle ? 1 : -1;
+          }
+          comparison = sortDirection === 'asc' ? comparison : -comparison;
           break;
         case 'cost':
-          aValue = a.cost;
-          bValue = b.cost;
+          if (a.cost === b.cost) {
+            // Desempate por _id
+            comparison = a._id > b._id ? 1 : a._id < b._id ? -1 : 0;
+          } else {
+            comparison = a.cost > b.cost ? 1 : -1;
+          }
+          comparison = sortDirection === 'asc' ? comparison : -comparison;
           break;
         default:
-          return 0;
+          comparison = 0;
       }
 
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-      } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-      }
+      return comparison;
     });
   }, [tasks, sortColumn, sortDirection]);
 

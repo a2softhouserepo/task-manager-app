@@ -210,30 +210,41 @@ export default function DashboardPage() {
     const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
     
     return [...activeTasks].sort((a, b) => {
-      let aValue: any, bValue: any;
+      let comparison = 0;
 
       switch (sortColumn) {
         case 'requestDate':
-          aValue = new Date(a.requestDate).getTime();
-          bValue = new Date(b.requestDate).getTime();
+          // Para requestDate, usar _id como ordenação primária pois reflete a ordem real de criação
+          // já que requestDate vem do formulário sem hora/minuto (apenas data)
+          comparison = sortDirection === 'desc' 
+            ? (b._id > a._id ? 1 : b._id < a._id ? -1 : 0)
+            : (a._id > b._id ? 1 : a._id < b._id ? -1 : 0);
           break;
         case 'deliveryDate':
-          aValue = a.deliveryDate ? new Date(a.deliveryDate).getTime() : 0;
-          bValue = b.deliveryDate ? new Date(b.deliveryDate).getTime() : 0;
+          const aDelivery = a.deliveryDate ? new Date(a.deliveryDate).getTime() : 0;
+          const bDelivery = b.deliveryDate ? new Date(b.deliveryDate).getTime() : 0;
+          if (aDelivery === bDelivery) {
+            // Desempate por _id
+            comparison = a._id > b._id ? 1 : a._id < b._id ? -1 : 0;
+          } else {
+            comparison = aDelivery > bDelivery ? 1 : -1;
+          }
+          comparison = sortDirection === 'asc' ? comparison : -comparison;
           break;
         case 'cost':
-          aValue = a.cost;
-          bValue = b.cost;
+          if (a.cost === b.cost) {
+            // Desempate por _id
+            comparison = a._id > b._id ? 1 : a._id < b._id ? -1 : 0;
+          } else {
+            comparison = a.cost > b.cost ? 1 : -1;
+          }
+          comparison = sortDirection === 'asc' ? comparison : -comparison;
           break;
         default:
-          return 0;
+          comparison = 0;
       }
 
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-      } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-      }
+      return comparison;
     });
   }, [tasks, sortColumn, sortDirection]);
 
