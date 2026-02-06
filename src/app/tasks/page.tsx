@@ -818,13 +818,17 @@ export default function TasksPage() {
                     </DataTable.Cell>
                   ))}
                   <DataTable.Cell synced={task.asanaSynced} truncate title={task.title} className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <span>{task.title}</span>
+                    <div className="flex items-center gap-1">
                       {task.asanaSynced && (
-                        <span className="text-xs text-blue-600 dark:text-blue-400" title="Enviado para Asana">
-                          📧
+                        <span className="text-xs text-[#F06A6A] dark:text-[#F06A6A]" title="Sincronizado com Asana">
+                          <svg className="w-4 h-4" viewBox="0 0 100 100" fill="currentColor">
+                            <circle cx="50" cy="32" r="17"/>
+                            <circle cx="27" cy="70" r="17"/>
+                            <circle cx="73" cy="70" r="17"/>
+                          </svg>
                         </span>
                       )}
+                      <span>{task.title}</span>
                     </div>
                   </DataTable.Cell>
                   <DataTable.Cell synced={task.asanaSynced}>
