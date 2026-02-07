@@ -27,6 +27,7 @@ const rl = readline.createInterface({
 
 const collections = [
   'categories',
+  'team-members',
   'clients',
   'tasks',
   'audit-logs',

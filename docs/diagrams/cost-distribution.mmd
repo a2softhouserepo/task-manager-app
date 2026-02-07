@@ -1,0 +1,34 @@
+%% Cost Distribution Flow
+sequenceDiagram
+    participant U as Usuário
+    participant TM as TaskModal
+    participant API as API Tasks
+    participant DB as MongoDB
+
+    Note over U,DB: Criação/Edição de Tarefa com Distribuição
+
+    U->>TM: Define custo (ex: 10.0)
+    TM->>TM: Exibe seção distribuição
+
+    U->>TM: Seleciona membro "Ana"
+    TM->>TM: Adiciona com valor restante (10.0)
+
+    U->>TM: Seleciona membro "Bruno"
+    TM->>TM: Adiciona com valor restante
+
+    U->>TM: Ajusta sliders
+    TM->>TM: Ana=6.0, Bruno=4.0
+    TM->>TM: Validação: 6.0 + 4.0 = 10.0 ✓
+
+    U->>TM: Clica Salvar
+    TM->>API: POST/PUT com costDistribution
+
+    API->>API: Valida soma = custo
+    API->>DB: Salva tarefa com costDistribution
+
+    Note over U,DB: Consulta de Estatísticas
+
+    U->>API: GET /api/team-members/stats
+    API->>DB: Aggregate $unwind costDistribution
+    DB-->>API: Totais por membro
+    API-->>U: { currentMonth, allTime }

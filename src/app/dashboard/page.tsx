@@ -55,6 +55,7 @@ interface Task {
   status: string;
   asanaSynced?: boolean;
   asanaTaskGid?: string;
+  costDistribution?: { teamMemberId: string; teamMemberName: string; value: number }[];
   createdAt: string;
 }
 
@@ -86,6 +87,13 @@ interface Stats {
   statusStats: { _id: string; count: number; total: number }[];
 }
 
+interface TeamMemberStat {
+  _id: string;
+  teamMemberName: string;
+  total: number;
+  count: number;
+}
+
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 export default function DashboardPage() {
@@ -99,6 +107,8 @@ export default function DashboardPage() {
   const [clientsTree, setClientsTree] = useState<Client[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [teamMemberStats, setTeamMemberStats] = useState<TeamMemberStat[]>([]);
+  const [tasksByClient, setTasksByClient] = useState<{ clientName: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Filtros
@@ -120,6 +130,11 @@ export default function DashboardPage() {
   
   // Status update loading
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  
+  // Controle de expansão das seções
+  const [section1Expanded, setSection1Expanded] = useState(true);
+  const [section2Expanded, setSection2Expanded] = useState(true);
+  const [section3Expanded, setSection3Expanded] = useState(true);
 
   const userRole = (session?.user as any)?.role || 'user';
   const userId = (session?.user as any)?.id;
@@ -138,7 +153,24 @@ export default function DashboardPage() {
       
       const res = await fetch(`/api/tasks?${params.toString()}`);
       const data = await res.json();
-      setTasks(data.tasks || []);
+      const allTasks = data.tasks || [];
+      setTasks(allTasks);
+      
+      // Calcular contagem de tarefas por cliente (todas as tarefas, incluindo concluídas)
+      const clientCounts = allTasks.reduce((acc: { [key: string]: { name: string; count: number } }, task: Task) => {
+        const clientKey = task.clientId;
+        if (!acc[clientKey]) {
+          acc[clientKey] = { name: task.clientName, count: 0 };
+        }
+        acc[clientKey].count++;
+        return acc;
+      }, {});
+      
+      const sortedClientCounts = Object.values(clientCounts)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      setTasksByClient(sortedClientCounts);
     } catch (error) {
       console.error('Error loading tasks:', error);
     }
@@ -174,24 +206,27 @@ export default function DashboardPage() {
 
   const loadData = async () => {
     try {
-      const [clientsRes, clientsTreeRes, categoriesRes, statsRes] = await Promise.all([
+      const [clientsRes, clientsTreeRes, categoriesRes, statsRes, teamMemberStatsRes] = await Promise.all([
         fetch('/api/clients?active=true'),
         fetch('/api/clients?active=true&tree=true'),
         fetch('/api/categories?active=true'),
         fetch('/api/tasks/stats'),
+        fetch('/api/team-members/stats'),
       ]);
       
-      const [clientsData, clientsTreeData, categoriesData, statsData] = await Promise.all([
+      const [clientsData, clientsTreeData, categoriesData, statsData, teamMemberStatsData] = await Promise.all([
         clientsRes.json(),
         clientsTreeRes.json(),
         categoriesRes.json(),
         statsRes.json(),
+        teamMemberStatsRes.json(),
       ]);
       
       setClients(clientsData.clients || []);
       setClientsTree(clientsTreeData.clients || []);
       setCategories(categoriesData.categories || []);
       setStats(statsData);
+      setTeamMemberStats(teamMemberStatsData.currentMonth || []);
       
       await loadTasks();
     } catch (error) {
@@ -495,180 +530,312 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Cards de Resumo */}
-      <section id="dashboard-stats" className="grid grid-cols-1 md:grid-cols-3 density-grid-gap density-mb">
+      {/* Seção 1: Estatísticas Principais */}
+      <section className="density-mb">
         <div className="card-soft density-card-padding">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
-              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-muted-foreground">Total Mês Atual</p>
-              <p className="text-2xl font-bold text-foreground">
-                {formatCurrency(stats?.currentMonth.total || 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="card-soft density-card-padding">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
-              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-muted-foreground">Tarefas Mês Atual</p>
-              <p className="text-2xl font-bold text-foreground">
-                {stats?.currentMonth.count || 0}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="card-soft density-card-padding">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30">
-              <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-muted-foreground">Total de Clientes</p>
-              <p className="text-2xl font-bold text-foreground">
-                {clients.length}
-              </p>
+          <button
+            onClick={() => setSection1Expanded(!section1Expanded)}
+            className="w-full flex items-center justify-between text-left group"
+          >
+            <h2 className="text-lg font-semibold text-foreground">Estatísticas Principais</h2>
+            <svg
+              className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${
+                section1Expanded ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          <div
+            className={`overflow-hidden transition-all duration-300 ${
+              section1Expanded ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 density-grid-gap">
+              <div className="card-soft density-card-padding bg-background">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                    <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Total Mês Atual</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {formatCurrency(stats?.currentMonth.total || 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="card-soft density-card-padding bg-background">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
+                    <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Tarefas Mês Atual</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {stats?.currentMonth.count || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="card-soft density-card-padding bg-background">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30">
+                    <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Total de Clientes</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {clients.length}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Gráficos */}
-      <section id="dashboard-charts" className="grid grid-cols-1 lg:grid-cols-2 density-grid-gap density-mb">
-        {/* Gráfico de Barras - Mensal */}
+      {/* Seção 2: Análises por Cliente e Equipe */}
+      <section className="density-mb">
         <div className="card-soft density-card-padding">
-          <h3 className="text-lg font-semibold text-foreground mb-4">
-            Faturamento Mensal
-          </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={(stats?.monthlyData || []).map(d => ({
-                  name: d.month,
-                  total: d.total,
-                }))}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#60a5fa" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={1} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid 
-                  strokeDasharray="3 3" 
-                  stroke={chartColors.grid} 
-                  vertical={false}
-                />
-                <XAxis 
-                  dataKey="name" 
-                  stroke={chartColors.text}
-                  tick={{ fill: chartColors.text, fontSize: 11 }}
-                  axisLine={{ stroke: chartColors.grid }}
-                />
-                <YAxis 
-                  stroke={chartColors.text}
-                  tick={{ fill: chartColors.text }}
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                  axisLine={false}
-                />
-                <RechartsTooltip 
-                  contentStyle={{
-                    backgroundColor: chartColors.tooltipBg,
-                    border: `1px solid ${chartColors.tooltipBorder}`,
-                    borderRadius: '6px',
-                    color: chartColors.tooltipText,
-                  }}
-                  labelStyle={{ color: chartColors.tooltipText }}
-                  itemStyle={{ color: chartColors.tooltipText }}
-                  formatter={(value: any) => [formatCurrency(value), 'Faturamento']}
-                  cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-                />
-                <Bar 
-                  dataKey="total" 
-                  fill="url(#barGradient)"
-                  radius={[8, 8, 0, 0]}
-                  maxBarSize={60}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+          <button
+            onClick={() => setSection2Expanded(!section2Expanded)}
+            className="w-full flex items-center justify-between text-left group"
+          >
+            <h2 className="text-lg font-semibold text-foreground">Análises por Cliente e Equipe</h2>
+            <svg
+              className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${
+                section2Expanded ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          <div
+            className={`overflow-hidden transition-all duration-300 ${
+              section2Expanded ? 'max-h-[600px] opacity-100 mt-4' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-3 density-grid-gap">
+              {/* Tarefas por Cliente */}
+              <div className="card-soft density-card-padding bg-background">
+                <div className="flex items-center mb-3">
+                  <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                    <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h3 className="ml-3 text-base font-semibold text-foreground">Tarefas por Cliente</h3>
+                </div>
+                {tasksByClient.length > 0 ? (
+                  <div className="space-y-2">
+                    {tasksByClient.map((client, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 rounded bg-muted/30">
+                        <span className="text-sm text-foreground truncate flex-1 mr-2">
+                          {client.name.length > 20 ? client.name.substring(0, 20) + '...' : client.name}
+                        </span>
+                        <span className="text-sm font-bold text-foreground">{client.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nenhuma tarefa</p>
+                )}
+              </div>
+
+              {/* Top 5 Clientes - Gráfico de Pizza */}
+              <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'} bg-background`}>
+                <h3 className={`text-base font-semibold text-foreground ${isCompact ? 'mb-2' : 'mb-4'}`}>
+                  Top 5 Clientes
+                </h3>
+                <div className={`${isCompact ? 'h-48' : 'h-64'}`}>
+                  <PieResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <defs>
+                        {COLORS.map((color, index) => (
+                          <linearGradient key={`gradient-${index}`} id={`pieGradient-${index}`} x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                            <stop offset="100%" stopColor={color} stopOpacity={1} />
+                          </linearGradient>
+                        ))}
+                      </defs>
+                      <Pie
+                        data={(stats?.clientStats || []).map((c, index) => ({
+                          name: c.clientName,
+                          value: c.total,
+                          color: COLORS[index % COLORS.length],
+                        }))}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={75}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => {
+                          if (!name || percent === undefined) return '';
+                          const displayName = name.length > 8 ? name.substring(0, 8) + '...' : name;
+                          return `${displayName} ${(percent * 100).toFixed(0)}%`;
+                        }}
+                        labelLine={{ stroke: chartColors.text, strokeWidth: 1 }}
+                      >
+                        {(stats?.clientStats || []).map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={`url(#pieGradient-${index % COLORS.length})`}
+                            stroke={resolvedTheme === 'dark' ? '#1f2937' : '#ffffff'}
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <PieTooltip 
+                        contentStyle={{
+                          backgroundColor: chartColors.tooltipBg,
+                          border: `1px solid ${chartColors.tooltipBorder}`,
+                          borderRadius: '6px',
+                          color: chartColors.tooltipText,
+                        }}
+                        labelStyle={{ color: chartColors.tooltipText }}
+                        itemStyle={{ color: chartColors.tooltipText }}
+                        formatter={(value: any) => {
+                          const total = (stats?.clientStats || []).reduce((sum, c) => sum + c.total, 0);
+                          const percent = ((value / total) * 100).toFixed(1);
+                          return [`${formatCurrency(value)} (${percent}%)`];
+                        }}
+                      />
+                    </PieChart>
+                  </PieResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Equipe (Mês Atual) */}
+              {teamMemberStats.length > 0 && (
+                <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'} bg-background`}>
+                  <h3 className={`text-base font-semibold text-foreground ${isCompact ? 'mb-2' : 'mb-4'}`}>
+                    Equipe (Mês Atual)
+                  </h3>
+                  <div className={`${isCompact ? 'space-y-3' : 'space-y-4'}`}>
+                    {teamMemberStats.map((ms, index) => (
+                      <div key={ms._id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold ${isCompact ? 'text-xs' : 'text-sm'}`}
+                               style={{ backgroundColor: COLORS[index % COLORS.length] }}>
+                            {index + 1}
+                          </div>
+                          <span className="text-foreground truncate text-sm">{ms.teamMemberName}</span>
+                        </div>
+                        <div className="flex flex-col items-end ml-2">
+                          <span className="text-base font-bold text-orange-600 dark:text-orange-400">
+                            {ms.total.toFixed(1)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {ms.count} tarefa{ms.count !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Gráfico de Pizza - Por Cliente */}
-        <div className={`card-soft ${isCompact ? 'p-4' : 'p-6'}`}>
-          <h3 className={`text-lg font-semibold text-foreground ${isCompact ? 'mb-2' : 'mb-4'}`}>
-            Top 5 Clientes
-          </h3>
-          <div className={`h-64 ${isCompact ? 'h-48' : 'h-64'}`}>
-            <PieResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <defs>
-                  {COLORS.map((color, index) => (
-                    <linearGradient key={`gradient-${index}`} id={`pieGradient-${index}`} x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor={color} stopOpacity={0.9} />
-                      <stop offset="100%" stopColor={color} stopOpacity={1} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <Pie
-                  data={(stats?.clientStats || []).map((c, index) => ({
-                    name: c.clientName,
-                    value: c.total,
-                    color: COLORS[index % COLORS.length],
+      {/* Seção 3: Faturamento Mensal */}
+      <section className="density-mb">
+        <div className="card-soft density-card-padding">
+          <button
+            onClick={() => setSection3Expanded(!section3Expanded)}
+            className="w-full flex items-center justify-between text-left group"
+          >
+            <h2 className="text-lg font-semibold text-foreground">Faturamento Mensal</h2>
+            <svg
+              className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${
+                section3Expanded ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          <div
+            className={`overflow-hidden transition-all duration-300 ${
+              section3Expanded ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={(stats?.monthlyData || []).map(d => ({
+                    name: d.month,
+                    total: d.total,
                   }))}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={({ name, percent }) => {
-                    if (!name || percent === undefined) return '';
-                    const displayName = name.length > 12 ? name.substring(0, 12) + '...' : name;
-                    return `${displayName} ${(percent * 100).toFixed(0)}%`;
-                  }}
-                  labelLine={{ stroke: chartColors.text, strokeWidth: 1 }}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                 >
-                  {(stats?.clientStats || []).map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={`url(#pieGradient-${index % COLORS.length})`}
-                      stroke={resolvedTheme === 'dark' ? '#1f2937' : '#ffffff'}
-                      strokeWidth={2}
-                    />
-                  ))}
-                </Pie>
-                <PieTooltip 
-                  contentStyle={{
-                    backgroundColor: chartColors.tooltipBg,
-                    border: `1px solid ${chartColors.tooltipBorder}`,
-                    borderRadius: '6px',
-                    color: chartColors.tooltipText,
-                  }}
-                  labelStyle={{ color: chartColors.tooltipText }}
-                  itemStyle={{ color: chartColors.tooltipText }}
-                  formatter={(value: any) => {
-                    const total = (stats?.clientStats || []).reduce((sum, c) => sum + c.total, 0);
-                    const percent = ((value / total) * 100).toFixed(1);
-                    return [`${formatCurrency(value)} (${percent}%)`];
-                  }}
-                />
-              </PieChart>
-            </PieResponsiveContainer>
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#60a5fa" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    stroke={chartColors.grid} 
+                    vertical={false}
+                  />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke={chartColors.text}
+                    tick={{ fill: chartColors.text, fontSize: 11 }}
+                    axisLine={{ stroke: chartColors.grid }}
+                  />
+                  <YAxis 
+                    stroke={chartColors.text}
+                    tick={{ fill: chartColors.text }}
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    axisLine={false}
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{
+                      backgroundColor: chartColors.tooltipBg,
+                      border: `1px solid ${chartColors.tooltipBorder}`,
+                      borderRadius: '6px',
+                      color: chartColors.tooltipText,
+                    }}
+                    labelStyle={{ color: chartColors.tooltipText }}
+                    itemStyle={{ color: chartColors.tooltipText }}
+                    formatter={(value: any) => [formatCurrency(value), 'Faturamento']}
+                    cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                  />
+                  <Bar 
+                    dataKey="total" 
+                    fill="url(#barGradient)"
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={60}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </section>
@@ -887,6 +1054,21 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold text-foreground mb-4">Observações</h3>
                 <div className="rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
                   <p className="text-sm text-foreground whitespace-pre-wrap">{viewingTask.observations}</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Distribuição de Custo */}
+            {viewingTask.costDistribution && viewingTask.costDistribution.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Distribuição de Custo</h3>
+                <div className="space-y-2">
+                  {viewingTask.costDistribution.map((dist) => (
+                    <div key={dist.teamMemberId} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-2">
+                      <span className="text-sm text-foreground">{dist.teamMemberName}</span>
+                      <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{dist.value.toFixed(1)}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
