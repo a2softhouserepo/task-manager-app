@@ -10,6 +10,7 @@ Documentação completa de todos os endpoints da API do Task Manager App.
 - [Tasks (Tarefas)](#tasks-tarefas)
 - [Clients (Clientes)](#clients-clientes)
 - [Categories (Categorias)](#categories-categorias)
+- [Team Members (Membros da Equipe)](#team-members-membros-da-equipe)
 - [Users (Usuários)](#users-usuários)
 - [Backups](#backups)
 - [Audit Logs](#audit-logs)
@@ -615,6 +616,94 @@ Remove uma categoria.
 
 **Permissions:**
 - Similar às permissões de clientes
+
+---
+
+## Team Members (Membros da Equipe)
+
+### GET /api/team-members
+
+Lista todos os membros da equipe.
+
+**Query params:**
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| active | boolean | Filtrar por status ativo/inativo |
+
+**Response (200):**
+```json
+{
+  "teamMembers": [
+    {
+      "_id": "...",
+      "name": "Ana Silva",
+      "role": "Desenvolvedora",
+      "icon": "👩‍💻",
+      "color": "#3B82F6",
+      "active": true,
+      "createdBy": "...",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+### POST /api/team-members
+
+Cria um novo membro da equipe.
+
+**Body:**
+```json
+{
+  "name": "Ana Silva",
+  "role": "Desenvolvedora",
+  "icon": "👩‍💻",
+  "color": "#3B82F6"
+}
+```
+
+### GET /api/team-members/[id]
+
+Retorna um membro específico.
+
+### PUT /api/team-members/[id]
+
+Atualiza um membro. Se o nome for alterado, atualiza o nome denormalizado em todas as tarefas com distribuição de custo.
+
+**Body (todos opcionais):**
+```json
+{
+  "name": "Ana Costa",
+  "role": "Tech Lead",
+  "icon": "👩‍💼",
+  "color": "#8B5CF6",
+  "active": false
+}
+```
+
+### DELETE /api/team-members/[id]
+
+Remove um membro da equipe.
+
+**Errors:**
+- `400` - Membro tem tarefas com distribuição de custo associadas
+
+### GET /api/team-members/stats
+
+Retorna estatísticas de distribuição de custo por membro.
+
+**Response (200):**
+```json
+{
+  "currentMonth": [
+    { "_id": "member_id", "teamMemberName": "Ana Silva", "total": 25.5, "count": 8 }
+  ],
+  "allTime": [
+    { "_id": "member_id", "teamMemberName": "Ana Silva", "total": 150.0, "count": 42 }
+  ]
+}
+```
 
 ---
 

@@ -1,0 +1,32 @@
+%% Team Members - Entity and Flow Diagram
+graph TB
+    subgraph "Cadastro"
+        A[Página Categorias] --> B[Seção Membros da Equipe]
+        B --> C{Ação}
+        C -->|Novo| D[Modal Criar Membro]
+        C -->|Editar| E[Modal Editar Membro]
+        C -->|Excluir| F{Tem tarefas vinculadas?}
+        F -->|Sim| G[Bloqueia exclusão]
+        F -->|Não| H[Exclui membro]
+        D --> I[POST /api/team-members]
+        E --> J[PUT /api/team-members/:id]
+        J -->|Nome alterado| K[Atualiza nome denormalizado nas tarefas]
+    end
+
+    subgraph "Distribuição de Custo"
+        L[TaskModal] --> M{Custo > 0 e membros existem?}
+        M -->|Sim| N[Exibe seção Distribuição]
+        M -->|Não| O[Oculta seção]
+        N --> P[Selecionar membro]
+        P --> Q[Ajustar valor com slider]
+        Q --> R{Soma = Custo total?}
+        R -->|Sim| S[Permite salvar]
+        R -->|Não| T[Exibe restante]
+    end
+
+    subgraph "Visualização"
+        U[Dashboard] --> V[Card Equipe Mês Atual]
+        U --> W[Modal Detalhes - costDistribution]
+        X[Tarefas] --> Y[Modal Detalhes - costDistribution]
+        V --> Z[GET /api/team-members/stats]
+    end

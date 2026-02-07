@@ -21,6 +21,11 @@ const updateTaskSchema = z.object({
   observations: z.string().max(2000, 'Observações muito longas').nullable().optional(),
   status: z.enum(['pending', 'in_progress', 'qa', 'completed', 'cancelled']).optional(),
   sendToAsana: z.boolean().optional(),
+  costDistribution: z.array(z.object({
+    teamMemberId: z.string().min(1),
+    teamMemberName: z.string().min(1),
+    value: z.number().min(0.1, 'Valor mínimo é 0.1'),
+  })).nullable().optional(),
 });
 
 export async function GET(
@@ -107,6 +112,14 @@ export async function PUT(
         status: formData.get('status') || undefined,
         sendToAsana: formData.get('sendToAsana') === 'true',
       };
+
+      // Parse costDistribution from FormData
+      const costDistributionRaw = formData.get('costDistribution');
+      if (costDistributionRaw) {
+        try {
+          body.costDistribution = JSON.parse(costDistributionRaw as string);
+        } catch { /* ignore parse errors */ }
+      }
       
       // Remove campos undefined
       Object.keys(body).forEach(key => body[key] === undefined && delete body[key]);
@@ -174,6 +187,24 @@ export async function PUT(
 
     const updates: any = { ...validationResult.data };
     const originalTask = createAuditSnapshot(task.toObject());
+
+    // Validar distribuição de custo
+    if (updates.costDistribution !== undefined) {
+      if (updates.costDistribution === null || (Array.isArray(updates.costDistribution) && updates.costDistribution.length === 0)) {
+        updates.costDistribution = [];
+      } else if (Array.isArray(updates.costDistribution) && updates.costDistribution.length > 0) {
+        const taskCost = updates.cost !== undefined ? updates.cost : task.cost;
+        const distributionSum = updates.costDistribution.reduce((sum: number, d: any) => sum + d.value, 0);
+        const roundedSum = Math.round(distributionSum * 10) / 10;
+        const roundedCost = Math.round(taskCost * 10) / 10;
+        if (roundedSum !== roundedCost) {
+          return NextResponse.json(
+            { error: `A soma da distribuição de custo (${roundedSum}) deve ser igual ao custo total (${roundedCost})` },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     // Se clientId foi alterado, atualizar clientName
     if (updates.clientId && updates.clientId !== task.clientId) {

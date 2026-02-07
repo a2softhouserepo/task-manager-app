@@ -19,6 +19,21 @@ interface Category {
   color?: string;
 }
 
+interface TeamMember {
+  _id: string;
+  name: string;
+  role?: string;
+  icon: string;
+  color: string;
+  active: boolean;
+}
+
+interface CostDistributionItem {
+  teamMemberId: string;
+  teamMemberName: string;
+  value: number;
+}
+
 interface Task {
   _id: string;
   requestDate: string;
@@ -34,6 +49,7 @@ interface Task {
   status: string;
   asanaSynced?: boolean;
   asanaTaskGid?: string;
+  costDistribution?: CostDistributionItem[];
 }
 
 interface TaskFormData {
@@ -47,6 +63,7 @@ interface TaskFormData {
   observations: string;
   status: string;
   sendToAsana: boolean;
+  costDistribution: CostDistributionItem[];
 }
 
 interface AsanaConfig {
@@ -83,6 +100,7 @@ const getInitialFormState = (): TaskFormData => ({
   observations: '',
   status: 'pending',
   sendToAsana: true,
+  costDistribution: [],
 });
 
 export default function TaskModal({
@@ -98,13 +116,15 @@ export default function TaskModal({
   const [saving, setSaving] = useState(false);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [attachmentWarning, setAttachmentWarning] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState('');
   const [asanaConfig, setAsanaConfig] = useState<AsanaConfig>({
     allowedTypes: ['.zip'],
     maxSizeMB: 10,
     maxFiles: 5,
   });
 
-  // Fetch Asana config on mount
+  // Fetch Asana config and team members on mount
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -121,7 +141,19 @@ export default function TaskModal({
         console.error('Error fetching Asana config:', error);
       }
     };
+    const fetchTeamMembers = async () => {
+      try {
+        const res = await fetch('/api/team-members?active=true');
+        if (res.ok) {
+          const data = await res.json();
+          setTeamMembers(data.teamMembers || []);
+        }
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+      }
+    };
     fetchConfig();
+    fetchTeamMembers();
   }, []);
 
   // Reset form when modal opens/closes or editingTask changes
@@ -139,12 +171,14 @@ export default function TaskModal({
           observations: editingTask.observations || '',
           status: editingTask.status,
           sendToAsana: !!editingTask.asanaTaskGid, // true se já sincronizada, false se não
+          costDistribution: editingTask.costDistribution || [],
         });
       } else {
         setForm(getInitialFormState());
       }
       setAttachments([]);
       setAttachmentWarning(null);
+      setSelectedMemberId('');
     }
   }, [isOpen, editingTask]);
 
@@ -180,6 +214,17 @@ export default function TaskModal({
       
       let res: Response;
       
+      // Validar distribuição de custo antes de enviar
+      if (form.costDistribution.length > 0) {
+        const distributionSum = Math.round(form.costDistribution.reduce((sum, d) => sum + d.value, 0) * 10) / 10;
+        const costValue = Math.round(Number(form.cost) * 10) / 10;
+        if (distributionSum !== costValue) {
+          alert(`A soma da distribuição (${distributionSum}) deve ser igual ao custo total (${costValue})`);
+          setSaving(false);
+          return;
+        }
+      }
+
       // Usar FormData quando há anexos e vai enviar para Asana
       if (attachments.length > 0 && form.sendToAsana) {
         setUploadingAttachments(true);
@@ -188,11 +233,17 @@ export default function TaskModal({
         
         // Adiciona todos os campos do formulário
         Object.entries(form).forEach(([key, value]) => {
+          if (key === 'costDistribution') return; // handled separately
           if (value !== undefined && value !== null && value !== '') {
             formData.append(key, value.toString());
           }
         });
         formData.append('cost', Number(form.cost).toString());
+        
+        // Adiciona costDistribution como JSON string
+        if (form.costDistribution.length > 0) {
+          formData.append('costDistribution', JSON.stringify(form.costDistribution));
+        }
         
         // Adiciona os arquivos
         attachments.forEach((file) => {
@@ -213,6 +264,7 @@ export default function TaskModal({
           body: JSON.stringify({
             ...form,
             cost: Number(form.cost),
+            costDistribution: form.costDistribution.length > 0 ? form.costDistribution : editingTask ? [] : undefined,
           }),
         });
       }
@@ -428,6 +480,119 @@ export default function TaskModal({
             )}
           </div>
         </div>
+        
+        {/* Distribuição de Custo por Membro */}
+        {form.cost > 0 && teamMembers.length > 0 && (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-foreground">
+                Distribuição de Custo <span className="text-xs text-muted-foreground">(opcional)</span>
+              </label>
+              {form.costDistribution.length > 0 && (
+                <span className={`text-xs font-medium px-2 py-1 rounded ${
+                  Math.round(form.costDistribution.reduce((s, d) => s + d.value, 0) * 10) / 10 === Math.round(Number(form.cost) * 10) / 10
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                }`}>
+                  Restante: {(Math.round((Number(form.cost) - form.costDistribution.reduce((s, d) => s + d.value, 0)) * 10) / 10).toFixed(1)}
+                </span>
+              )}
+            </div>
+            
+            {/* Adicionar membro */}
+            <div className="flex gap-2">
+              <select
+                value={selectedMemberId}
+                onChange={(e) => setSelectedMemberId(e.target.value)}
+                className="input-soft flex-1"
+              >
+                <option value="">Selecionar membro...</option>
+                {teamMembers
+                  .filter(m => !form.costDistribution.find(d => d.teamMemberId === m._id))
+                  .map((m) => (
+                    <option key={m._id} value={m._id}>{m.icon} {m.name}</option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedMemberId) return;
+                  const member = teamMembers.find(m => m._id === selectedMemberId);
+                  if (!member) return;
+                  const remaining = Math.round((Number(form.cost) - form.costDistribution.reduce((s, d) => s + d.value, 0)) * 10) / 10;
+                  const initialValue = Math.min(remaining > 0 ? remaining : 0.1, Number(form.cost));
+                  setForm({
+                    ...form,
+                    costDistribution: [
+                      ...form.costDistribution,
+                      {
+                        teamMemberId: member._id,
+                        teamMemberName: member.name,
+                        value: Math.round(initialValue * 10) / 10,
+                      }
+                    ]
+                  });
+                  setSelectedMemberId('');
+                }}
+                disabled={!selectedMemberId}
+                className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
+              >
+                Adicionar
+              </button>
+            </div>
+            
+            {/* Lista de membros com sliders */}
+            {form.costDistribution.map((dist, idx) => {
+              const member = teamMembers.find(m => m._id === dist.teamMemberId);
+              return (
+                <div key={dist.teamMemberId} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                  <span className="text-lg" title={member?.role || dist.teamMemberName}>
+                    {member?.icon || '👤'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {dist.teamMemberName}
+                      </span>
+                      <span className="text-sm font-bold text-blue-600 dark:text-blue-400 ml-2">
+                        {dist.value.toFixed(1)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max={Number(form.cost)}
+                      step="0.1"
+                      value={dist.value}
+                      onChange={(e) => {
+                        const newValue = Math.round(parseFloat(e.target.value) * 10) / 10;
+                        const newDistribution = [...form.costDistribution];
+                        newDistribution[idx] = { ...dist, value: newValue };
+                        setForm({ ...form, costDistribution: newDistribution });
+                      }}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm({
+                        ...form,
+                        costDistribution: form.costDistribution.filter((_, i) => i !== idx),
+                      });
+                    }}
+                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded dark:hover:bg-red-950/30"
+                    title="Remover"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
         
         {/* Anexos para Asana */}
         <div>

@@ -43,6 +43,8 @@ Todos os diagramas estão em formato Mermaid (`.mmd`). Veja [diagrams/README.md]
 | [asana-integration.mmd](diagrams/asana-integration.mmd) | Integração bidirecional Asana |
 | [backup-restore.mmd](diagrams/backup-restore.mmd) | Sistema de backup/restore |
 | [audit-logging.mmd](diagrams/audit-logging.mmd) | Sistema de auditoria |
+| [team-members.mmd](diagrams/team-members.mmd) | Fluxo de membros da equipe |
+| [cost-distribution.mmd](diagrams/cost-distribution.mmd) | Distribuição de custos |
 
 ### Arquitetura
 | Diagrama | Descrição |
@@ -61,6 +63,7 @@ Todos os diagramas estão em formato Mermaid (`.mmd`). Veja [diagrams/README.md]
 |-----------|-----------|
 | [asana-integration.md](asana-integration.md) | Integração completa com Asana (webhooks, sync) |
 | [client-hierarchy.md](client-hierarchy.md) | Sistema de hierarquia de clientes |
+| [team-members.md](team-members.md) | Membros da equipe e distribuição de custos |
 | [dashboard-improvements.md](dashboard-improvements.md) | Melhorias de UI do Dashboard |
 | [table-component.md](table-component.md) | Componente DataTable reutilizável |
 

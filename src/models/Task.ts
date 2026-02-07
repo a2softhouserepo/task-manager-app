@@ -22,6 +22,11 @@ export interface ITask {
   cost: number;
   observations?: string;
   status: 'pending' | 'in_progress' | 'qa' | 'completed' | 'cancelled';
+  costDistribution?: {
+    teamMemberId: string;
+    teamMemberName: string;
+    value: number;
+  }[];
   asanaTaskGid?: string; // Asana task ID for updates
   asanaSynced: boolean; // Whether task was synced to Asana
   asanaSyncError?: string; // Error message if sync failed
@@ -93,6 +98,11 @@ const TaskSchema = new Schema<ITask>(
       type: String,
       trim: true,
     },
+    costDistribution: [{
+      teamMemberId: { type: String, required: true },
+      teamMemberName: { type: String, required: true, trim: true },
+      value: { type: Number, required: true, min: 0 },
+    }],
     status: {
       type: String,
       enum: ['pending', 'in_progress', 'qa', 'completed', 'cancelled'],
@@ -143,6 +153,7 @@ TaskSchema.index({ status: 1, requestDate: -1 }); // Listagem filtrada por statu
 TaskSchema.index({ clientId: 1, categoryId: 1, requestDate: -1 }); // Relatórios combinados
 TaskSchema.index({ clientId: 1, status: 1 }); // Stats por cliente
 TaskSchema.index({ categoryId: 1, status: 1 }); // Stats por categoria
+TaskSchema.index({ 'costDistribution.teamMemberId': 1 }); // Stats por membro da equipe
 
 // Apply field encryption to sensitive fields with blind indexes
 TaskSchema.plugin(fieldEncryptionPlugin, {

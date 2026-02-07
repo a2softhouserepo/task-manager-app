@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     // Query principal com otimizações
     let tasksQuery = Task.find(query)
       .sort({ requestDate: -1 })
-      .select('requestDate clientId clientName categoryId categoryName categoryIcon categoryColor title description deliveryDate cost observations status asanaTaskGid asanaSynced createdBy createdAt updatedAt');
+      .select('requestDate clientId clientName categoryId categoryName categoryIcon categoryColor title description deliveryDate cost observations status asanaTaskGid asanaSynced costDistribution createdBy createdAt updatedAt');
     
     // Aplicar paginação se solicitada
     if (paginate) {
@@ -230,6 +230,11 @@ const createTaskSchema = z.object({
   observations: z.string().max(2000, 'Observações muito longas').nullable().optional(),
   status: z.enum(['pending', 'in_progress', 'qa', 'completed', 'cancelled']).optional(),
   sendToAsana: z.boolean().optional(),
+  costDistribution: z.array(z.object({
+    teamMemberId: z.string().min(1),
+    teamMemberName: z.string().min(1),
+    value: z.number().min(0.1, 'Valor mínimo é 0.1'),
+  })).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -262,6 +267,14 @@ export async function POST(request: NextRequest) {
         status: formData.get('status'),
         sendToAsana: formData.get('sendToAsana') === 'true',
       };
+
+      // Parse costDistribution from FormData
+      const costDistributionRaw = formData.get('costDistribution');
+      if (costDistributionRaw) {
+        try {
+          body.costDistribution = JSON.parse(costDistributionRaw as string);
+        } catch { /* ignore parse errors */ }
+      }
 
       // Buscar configurações de limite de arquivos
       const allowedTypes = await getConfig<string[]>('asana_allowed_file_types', ['.zip']);
@@ -334,8 +347,22 @@ export async function POST(request: NextRequest) {
       cost, 
       observations, 
       status,
-      sendToAsana 
+      sendToAsana,
+      costDistribution,
     } = validationResult.data;
+
+    // Validar que a soma da distribuição de custo é igual ao custo total
+    if (costDistribution && costDistribution.length > 0) {
+      const distributionSum = costDistribution.reduce((sum, d) => sum + d.value, 0);
+      const roundedSum = Math.round(distributionSum * 10) / 10;
+      const roundedCost = Math.round(cost * 10) / 10;
+      if (roundedSum !== roundedCost) {
+        return NextResponse.json(
+          { error: `A soma da distribuição de custo (${roundedSum}) deve ser igual ao custo total (${roundedCost})` },
+          { status: 400 }
+        );
+      }
+    }
 
     // Buscar cliente e categoria para denormalização
     const [client, category] = await Promise.all([
@@ -365,6 +392,7 @@ export async function POST(request: NextRequest) {
       cost,
       observations: observations || undefined,
       status: status || 'pending',
+      costDistribution: costDistribution && costDistribution.length > 0 ? costDistribution : undefined,
       asanaSynced: false,
       userId: (session.user as any).id,
       createdBy: (session.user as any).id,

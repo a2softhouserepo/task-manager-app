@@ -18,6 +18,7 @@ const path = require('path');
 const scripts = [
   'seed-users.js',
   'seed-categories.js',
+  'seed-team-members.js',
   'seed-clients.js',
   'seed-tasks.js',
 ];

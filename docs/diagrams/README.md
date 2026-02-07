@@ -33,6 +33,8 @@ Todos os arquivos `.mmd` podem ser visualizados com a extensão "Mermaid Preview
 | [asana-integration.mmd](asana-integration.mmd) | Integração bidirecional com Asana + Webhooks |
 | [backup-restore.mmd](backup-restore.mmd) | Sistema de backup automático e restauração |
 | [audit-logging.mmd](audit-logging.mmd) | Sistema de auditoria e logs |
+| [team-members.mmd](team-members.mmd) | Fluxo de membros da equipe |
+| [cost-distribution.mmd](cost-distribution.mmd) | Distribuição de custos por membro |
 
 ### 🏗️ Architecture & Deployment
 

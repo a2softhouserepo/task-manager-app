@@ -29,6 +29,7 @@ interface Task {
   status: string;
   asanaSynced: boolean;
   asanaTaskGid?: string;
+  costDistribution?: { teamMemberId: string; teamMemberName: string; value: number }[];
   createdBy: string;
   createdAt: string;
   updatedAt?: string;
@@ -950,6 +951,21 @@ export default function TasksPage() {
                   <h3 className="text-lg font-semibold text-foreground mb-4">Observações</h3>
                   <div className=" rounded-lg p-4">
                     <p className="text-sm text-foreground whitespace-pre-wrap">{viewingTask.observations}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Distribuição de Custo */}
+              {viewingTask.costDistribution && viewingTask.costDistribution.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Distribuição de Custo</h3>
+                  <div className="space-y-2">
+                    {viewingTask.costDistribution.map((dist) => (
+                      <div key={dist.teamMemberId} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-2">
+                        <span className="text-sm text-foreground">{dist.teamMemberName}</span>
+                        <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{dist.value.toFixed(1)}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
