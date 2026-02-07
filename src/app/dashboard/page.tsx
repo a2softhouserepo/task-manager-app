@@ -108,7 +108,7 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [teamMemberStats, setTeamMemberStats] = useState<TeamMemberStat[]>([]);
-  const [tasksByClient, setTasksByClient] = useState<{ clientName: string; count: number }[]>([]);
+  const [tasksByClient, setTasksByClient] = useState<{ name: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Filtros
@@ -166,7 +166,7 @@ export default function DashboardPage() {
         return acc;
       }, {});
       
-      const sortedClientCounts = Object.values(clientCounts)
+      const sortedClientCounts = (Object.values(clientCounts) as { name: string; count: number }[])
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
       
