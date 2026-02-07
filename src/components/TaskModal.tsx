@@ -214,6 +214,13 @@ export default function TaskModal({
       
       let res: Response;
       
+      // Validar se há pelo menos 1 membro de equipe
+      if (form.costDistribution.length === 0) {
+        alert('É obrigatório associar pelo menos 1 membro da equipe à tarefa');
+        setSaving(false);
+        return;
+      }
+      
       // Validar distribuição de custo antes de enviar
       if (form.costDistribution.length > 0) {
         const distributionSum = Math.round(form.costDistribution.reduce((sum, d) => sum + d.value, 0) * 10) / 10;
@@ -438,9 +445,9 @@ export default function TaskModal({
             </label>
             <input
               type="number"
-              step="0.01"
+              step="0.1"
               min="0"
-              value={form.cost}
+              value={form.cost.toFixed(1)}
               onChange={(e) => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })}
               className="input-soft"
               required
@@ -483,10 +490,18 @@ export default function TaskModal({
         
         {/* Distribuição de Custo por Membro */}
         {form.cost > 0 && teamMembers.length > 0 && (
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+          <div className={`border rounded-lg p-4 space-y-3 ${
+            form.costDistribution.length === 0 
+              ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20' 
+              : 'border-gray-200 dark:border-gray-700'
+          }`}>
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-foreground">
-                Distribuição de Custo <span className="text-xs text-muted-foreground">(opcional)</span>
+                Distribuição de Custo <span className={`text-xs ${
+                  form.costDistribution.length === 0 
+                    ? 'text-red-600 dark:text-red-400 font-semibold' 
+                    : 'text-muted-foreground'
+                }`}>({form.costDistribution.length === 0 ? 'obrigatório - mínimo 1 membro' : 'obrigatório'})</span>
               </label>
               {form.costDistribution.length > 0 && (
                 <span className={`text-xs font-medium px-2 py-1 rounded ${
@@ -498,6 +513,21 @@ export default function TaskModal({
                 </span>
               )}
             </div>
+            
+            {/* Alerta visual quando não há membros associados */}
+            {form.costDistribution.length === 0 && (
+              <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg flex items-start gap-2">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-300">Atenção</p>
+                  <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+                    É obrigatório associar pelo menos um membro da equipe à tarefa antes de salvar.
+                  </p>
+                </div>
+              </div>
+            )}
             
             {/* Adicionar membro */}
             <div className="flex gap-2">
@@ -519,8 +549,6 @@ export default function TaskModal({
                   if (!selectedMemberId) return;
                   const member = teamMembers.find(m => m._id === selectedMemberId);
                   if (!member) return;
-                  const remaining = Math.round((Number(form.cost) - form.costDistribution.reduce((s, d) => s + d.value, 0)) * 10) / 10;
-                  const initialValue = Math.min(remaining > 0 ? remaining : 0.1, Number(form.cost));
                   setForm({
                     ...form,
                     costDistribution: [
@@ -528,7 +556,7 @@ export default function TaskModal({
                       {
                         teamMemberId: member._id,
                         teamMemberName: member.name,
-                        value: Math.round(initialValue * 10) / 10,
+                        value: 0.1,
                       }
                     ]
                   });
@@ -682,8 +710,9 @@ export default function TaskModal({
           </button>
           <button
             type="submit"
-            disabled={saving}
-            className="btn-primary"
+            disabled={saving || form.costDistribution.length === 0}
+            title={form.costDistribution.length === 0 ? 'Adicione pelo menos 1 membro da equipe para continuar' : ''}
+            className={`btn-primary ${form.costDistribution.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
